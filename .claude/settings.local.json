@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python meta_analysis_report.py:*)",
+      "Bash(timeout /t 30 /nobreak)",
+      "Bash(python send_to_discord.py:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(dir:*)"
+    ]
+  }
+}
