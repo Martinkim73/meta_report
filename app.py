@@ -312,54 +312,68 @@ def page_clients():
         st.info("💡 **광고주 추가 가이드**: Meta 광고 계정 정보를 입력하여 자동 분석을 시작하세요")
         st.markdown('<div class="toss-card">', unsafe_allow_html=True)
         with st.form("add_client_form"):
+            st.markdown("**📝 기본 정보**")
             name = st.text_input(
                 "광고주 이름",
-                placeholder="예: AI코딩밸리",
-                help="식별하기 쉬운 광고주 이름을 입력하세요"
+                placeholder="예: AI코딩밸리"
             )
+            st.caption("👉 식별하기 쉬운 광고주 이름을 입력하세요")
+
+            st.markdown("---")
+            st.markdown("**🔑 Meta API 인증**")
             access_token = st.text_input(
-                "Meta Access Token",
-                type="password",
-                help="Meta Business Suite에서 발급받은 장기 토큰을 입력하세요 (60일 유효)"
+                "Meta Access Token (장기 토큰)",
+                type="password"
             )
+            st.caption("👉 Meta Business Suite → 시스템 사용자 → 토큰 생성 (60일 유효)")
+
             ad_account_id = st.text_input(
                 "광고 계정 ID",
-                placeholder="act_XXXXXXXXXX",
-                help="Meta 광고 관리자에서 확인 가능한 광고 계정 ID (act_로 시작)"
+                placeholder="act_XXXXXXXXXX"
             )
+            st.caption("👉 Meta 광고 관리자 → 설정에서 확인 (act_로 시작)")
+
+            st.markdown("---")
+            st.markdown("**🎯 분석 대상**")
             campaigns_str = st.text_area(
-                "타겟 캠페인 (줄바꿈 구분)",
-                placeholder="캠페인1\n캠페인2",
-                height=100,
-                help="분석할 캠페인 이름을 줄바꿈으로 구분하여 입력하세요. Meta 광고 관리자에서 정확한 이름을 복사하세요."
+                "타겟 캠페인 (줄바꿈으로 구분)",
+                placeholder="fbig_web_purchase_250613\nfbig_app_purchase_250910",
+                height=100
             )
+            st.caption("👉 Meta 광고 관리자에서 캠페인 이름을 정확히 복사하여 한 줄에 하나씩 입력하세요")
+
+            st.markdown("---")
+            st.markdown("**⚙️ 분석 기준 설정**")
             col1, col2 = st.columns(2)
             with col1:
                 min_spend = st.number_input(
                     "최소 지출 기준 (원)",
                     value=250000,
-                    step=10000,
-                    help="이 금액 이상 소진한 광고만 분석합니다 (기본: 25만원)"
+                    step=10000
                 )
+                st.caption("💰 이 금액 이상 소진한 광고만 분석")
+
                 budget_rule_pct = st.number_input(
-                    "규칙OFF 판단 비율 (%)",
+                    "규칙 OFF 판단 비율 (%)",
                     value=50,
                     min_value=0,
-                    max_value=100,
-                    help="예산의 이 비율 이하로 소진되면 '규칙 OFF' 경고 (기본: 50%)"
+                    max_value=100
                 )
+                st.caption("⚠️ 예산의 이 비율 이하 소진 시 경고")
             with col2:
                 low_roas = st.number_input(
                     "저효율 ROAS 기준 (%)",
                     value=85,
-                    step=5,
-                    help="이 ROAS 미만인 광고를 저효율로 판단합니다 (기본: 85%, 즉 광고비의 85% 미만 매출)"
+                    step=5
                 )
+                st.caption("📉 이 ROAS 미만인 광고를 저효율로 판단")
+
                 discord_webhook = st.text_input(
-                    "디스코드 웹훅 URL",
+                    "디스코드 웹훅 URL (선택)",
                     type="password",
-                    help="디스코드 채널의 웹훅 URL을 입력하면 분석 결과를 자동 전송합니다 (선택사항)"
+                    placeholder="https://discord.com/api/webhooks/..."
                 )
+                st.caption("📨 분석 결과를 자동으로 전송할 웹훅 URL")
 
             submitted = st.form_submit_button("광고주 추가", type="primary", use_container_width=True)
 
@@ -595,33 +609,31 @@ def main():
             unsafe_allow_html=True
         )
 
-        # 메뉴 설명
-        st.markdown(
-            '<div style="font-size:12px; color:#6B7684; margin-bottom:12px;">'
-            '메뉴를 선택하세요'
-            '</div>',
-            unsafe_allow_html=True
-        )
+        # 메뉴
+        st.markdown("**📂 메뉴**")
+        st.caption("원하는 메뉴를 선택하세요")
 
         page = st.radio(
             "메뉴",
-            options=["홈", "광고주 관리", "분석 결과"],
-            label_visibility="collapsed",
-            help="🏠 홈: 분석 실행 | 👥 광고주 관리: 설정 추가/수정 | 📊 분석 결과: 리포트 확인"
+            options=[
+                "🏠 홈 (분석 실행)",
+                "👥 광고주 관리 (설정)",
+                "📊 분석 결과 (리포트)"
+            ],
+            label_visibility="collapsed"
         )
 
-        # 메뉴별 설명
-        menu_descriptions = {
-            "홈": "💡 등록된 광고주를 선택하고 분석을 실행하세요",
-            "광고주 관리": "💡 광고주 정보와 분석 설정을 관리하세요",
-            "분석 결과": "💡 최근 분석 결과와 저효율 광고를 확인하세요"
+        # 메뉴 이름 추출 (이모지 제거)
+        page = page.split(" ")[1]
+
+        # 메뉴별 상세 설명
+        st.markdown("---")
+        menu_help = {
+            "홈": "**현재 메뉴: 홈**\n\n등록된 광고주를 선택하고 분석을 실행합니다.\n\n1. 광고주 선택\n2. '분석 실행' 버튼 클릭\n3. 2-3분 대기",
+            "광고주": "**현재 메뉴: 광고주 관리**\n\nMeta 광고 계정 정보를 관리합니다.\n\n• 추가: 새 광고주 등록\n• 수정: 기존 설정 변경\n• 삭제: 광고주 제거",
+            "분석": "**현재 메뉴: 분석 결과**\n\n최근 분석한 저효율 광고를 확인합니다.\n\n• DA/VA 소재별 분석\n• 디스코드 전송 가능"
         }
-        st.markdown(
-            f'<div style="font-size:11px; color:#8B95A1; padding:8px 12px; background:#F8F9FA; border-radius:8px; margin-top:8px;">'
-            f'{menu_descriptions[page]}'
-            '</div>',
-            unsafe_allow_html=True
-        )
+        st.info(menu_help.get(page, "메뉴 설명"))
 
         st.markdown('<hr class="toss-divider">', unsafe_allow_html=True)
         st.markdown(
