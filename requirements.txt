@@ -1,4 +1,0 @@
-streamlit
-facebook-business
-pandas
-requests
