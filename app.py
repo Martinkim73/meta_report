@@ -180,6 +180,30 @@ def page_home():
     st.markdown('<div class="toss-title">오늘도 광고비를 지켜드릴게요</div>', unsafe_allow_html=True)
     st.markdown('<div class="toss-subtitle">등록된 광고주를 선택하고 분석을 실행하세요</div>', unsafe_allow_html=True)
 
+    # 프로젝트 소개
+    with st.expander("📌 이 서비스는 무엇인가요?", expanded=False):
+        st.markdown("""
+        **메타 광고 성과 자동 분석 도구**입니다.
+
+        #### 주요 기능
+        - 🔍 **저효율 광고 자동 탐지** - ROAS 85% 미만 광고 찾기
+        - 📊 **DA/VA 소재 분석** - 동적/정적 소재별 성과 비교
+        - 💰 **예산 규칙 점검** - 캠페인 예산 ON/OFF 확인
+        - 📨 **디스코드 리포트** - 분석 결과 자동 전송
+
+        #### 사용 방법
+        1. **광고주 관리** 탭에서 광고주 추가
+        2. **홈** 탭에서 분석 실행
+        3. **분석 결과** 탭에서 결과 확인
+        4. 디스코드로 리포트 전송
+
+        #### 용어 설명
+        - **ROAS** (Return On Ad Spend): 광고비 대비 매출 비율 (매출/광고비 × 100%)
+        - **CPA** (Cost Per Action): 전환당 비용 (광고비/전환수)
+        - **DA 소재**: 동적 광고 (Dynamic Ads) - 자동 최적화 소재
+        - **VA 소재**: 정적 광고 (Video/Image Ads) - 수동 제작 소재
+        """)
+
     clients = load_clients()
 
     if not clients:
@@ -285,23 +309,57 @@ def page_clients():
 
     # ── 추가 탭 ──
     with tab_add:
+        st.info("💡 **광고주 추가 가이드**: Meta 광고 계정 정보를 입력하여 자동 분석을 시작하세요")
         st.markdown('<div class="toss-card">', unsafe_allow_html=True)
         with st.form("add_client_form"):
-            name = st.text_input("광고주 이름", placeholder="예: AI코딩밸리")
-            access_token = st.text_input("Meta Access Token", type="password")
-            ad_account_id = st.text_input("광고 계정 ID", placeholder="act_XXXXXXXXXX")
+            name = st.text_input(
+                "광고주 이름",
+                placeholder="예: AI코딩밸리",
+                help="식별하기 쉬운 광고주 이름을 입력하세요"
+            )
+            access_token = st.text_input(
+                "Meta Access Token",
+                type="password",
+                help="Meta Business Suite에서 발급받은 장기 토큰을 입력하세요 (60일 유효)"
+            )
+            ad_account_id = st.text_input(
+                "광고 계정 ID",
+                placeholder="act_XXXXXXXXXX",
+                help="Meta 광고 관리자에서 확인 가능한 광고 계정 ID (act_로 시작)"
+            )
             campaigns_str = st.text_area(
                 "타겟 캠페인 (줄바꿈 구분)",
                 placeholder="캠페인1\n캠페인2",
-                height=100
+                height=100,
+                help="분석할 캠페인 이름을 줄바꿈으로 구분하여 입력하세요. Meta 광고 관리자에서 정확한 이름을 복사하세요."
             )
             col1, col2 = st.columns(2)
             with col1:
-                min_spend = st.number_input("최소 지출 기준 (원)", value=250000, step=10000)
-                budget_rule_pct = st.number_input("규칙OFF 판단 비율 (%)", value=50, min_value=0, max_value=100)
+                min_spend = st.number_input(
+                    "최소 지출 기준 (원)",
+                    value=250000,
+                    step=10000,
+                    help="이 금액 이상 소진한 광고만 분석합니다 (기본: 25만원)"
+                )
+                budget_rule_pct = st.number_input(
+                    "규칙OFF 판단 비율 (%)",
+                    value=50,
+                    min_value=0,
+                    max_value=100,
+                    help="예산의 이 비율 이하로 소진되면 '규칙 OFF' 경고 (기본: 50%)"
+                )
             with col2:
-                low_roas = st.number_input("저효율 ROAS 기준 (%)", value=85, step=5)
-                discord_webhook = st.text_input("디스코드 웹훅 URL", type="password")
+                low_roas = st.number_input(
+                    "저효율 ROAS 기준 (%)",
+                    value=85,
+                    step=5,
+                    help="이 ROAS 미만인 광고를 저효율로 판단합니다 (기본: 85%, 즉 광고비의 85% 미만 매출)"
+                )
+                discord_webhook = st.text_input(
+                    "디스코드 웹훅 URL",
+                    type="password",
+                    help="디스코드 채널의 웹훅 URL을 입력하면 분석 결과를 자동 전송합니다 (선택사항)"
+                )
 
             submitted = st.form_submit_button("광고주 추가", type="primary", use_container_width=True)
 
@@ -414,6 +472,34 @@ def page_results():
     st.markdown('<div class="toss-title">분석 결과</div>', unsafe_allow_html=True)
     st.markdown('<div class="toss-subtitle">리포트를 확인하고 디스코드로 전송하세요</div>', unsafe_allow_html=True)
 
+    # 용어 설명
+    with st.expander("📖 용어 설명", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            **ROAS** (Return On Ad Spend)
+            - 광고비 대비 매출 비율
+            - 계산: (매출 / 광고비) × 100%
+            - 예: ROAS 150% = 10만원 광고비로 15만원 매출
+
+            **CPA** (Cost Per Action)
+            - 전환 1건당 비용
+            - 계산: 광고비 / 전환수
+            - 낮을수록 효율적
+            """)
+        with col2:
+            st.markdown("""
+            **DA 소재** (Dynamic Ads)
+            - 동적 광고 소재
+            - Meta가 자동으로 최적화
+            - 이름에 'DA', 'dynamic', 'auto' 포함
+
+            **VA 소재** (Video/Image Ads)
+            - 정적 광고 소재 (수동 제작)
+            - 직접 디자인한 이미지/비디오
+            - DA가 아닌 모든 소재
+            """)
+
     result = st.session_state.get('last_result')
     client_name = st.session_state.get('last_client', '')
     webhook_url = st.session_state.get('last_webhook', '')
@@ -509,10 +595,32 @@ def main():
             unsafe_allow_html=True
         )
 
+        # 메뉴 설명
+        st.markdown(
+            '<div style="font-size:12px; color:#6B7684; margin-bottom:12px;">'
+            '메뉴를 선택하세요'
+            '</div>',
+            unsafe_allow_html=True
+        )
+
         page = st.radio(
             "메뉴",
             options=["홈", "광고주 관리", "분석 결과"],
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            help="🏠 홈: 분석 실행 | 👥 광고주 관리: 설정 추가/수정 | 📊 분석 결과: 리포트 확인"
+        )
+
+        # 메뉴별 설명
+        menu_descriptions = {
+            "홈": "💡 등록된 광고주를 선택하고 분석을 실행하세요",
+            "광고주 관리": "💡 광고주 정보와 분석 설정을 관리하세요",
+            "분석 결과": "💡 최근 분석 결과와 저효율 광고를 확인하세요"
+        }
+        st.markdown(
+            f'<div style="font-size:11px; color:#8B95A1; padding:8px 12px; background:#F8F9FA; border-radius:8px; margin-top:8px;">'
+            f'{menu_descriptions[page]}'
+            '</div>',
+            unsafe_allow_html=True
         )
 
         st.markdown('<hr class="toss-divider">', unsafe_allow_html=True)
