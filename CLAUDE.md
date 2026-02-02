@@ -16,3 +16,18 @@
 ```
 streamlit run app.py
 ```
+
+## 현재 상태 (2026.02.03)
+- Streamlit 웹 앱 완성 (토스 스타일 UI)
+- 로컬 실행 가능, 온라인 배포 대기 중
+
+### 배포 옵션 (결정 필요)
+1. **Streamlit Cloud** (빠른 프로토타입)
+   - 무료, 30분 배포
+   - URL: `https://martinkim73-meta-report-app-xxx.streamlit.app`
+   - 제한: 성능, 커스터마이징
+
+2. **Vercel** (프로덕션급)
+   - Next.js 리팩토링 필요
+   - 고성능, 무제한 확장성
+   - 커스텀 도메인 지원
