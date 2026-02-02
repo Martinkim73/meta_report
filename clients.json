@@ -1,0 +1,11 @@
+{
+  "AI코딩밸리": {
+    "access_token": "EAAJtLQiScxMBQkCVWmMznCIZAoCQZCeHVXDLBznpUAa2niBBBurU2MmhraP7jN2ZCOKhlVEbA8lfdhAcZBqNsVPzAXi1xlZBYw5TbmSi9VX91XpzZCsbZAyIOZANl3nuu68IHwEmY9Bgclg6AMHTyNdjwlbLGpBGjBpJrd0zJebPcXigMZAvwTIeCnZAqtb97fqOkD",
+    "ad_account_id": "act_149067477924600",
+    "target_campaigns": ["fbig_web&app_purchase_250613", "fbig_web_purchase_240910"],
+    "min_spend": 250000,
+    "low_roas_threshold": 85,
+    "discord_webhook": "https://discord.com/api/webhooks/1467530388321865791/nHHwTsxtvfu_CcEtvBMpPzi-or09bBsp3ym1knL8tZ6zh1v6HMPKLqEjnIfE6P_e5Dwr",
+    "budget_rule_pct": 50
+  }
+}
