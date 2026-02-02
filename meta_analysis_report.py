@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 메타 광고 성과 분석 및 디스코드 리포팅 에이전트
+
+⚠️ LEGACY: 이 파일은 더 이상 사용되지 않습니다.
+    대신 app.py (Streamlit UI)를 사용하세요.
 """
 
 import sys
 import io
+import os
 
 # Windows 콘솔 UTF-8 인코딩 설정
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -18,11 +22,16 @@ from facebook_business.adobjects.adcreative import AdCreative
 import pandas as pd
 from datetime import datetime, timedelta
 
-# 메타 API 초기화
-ACCESS_TOKEN = 'EAAJtLQiScxMBQkCVWmMznCIZAoCQZCeHVXDLBznpUAa2niBBBurU2MmhraP7jN2ZCOKhlVEbA8lfdhAcZBqNsVPzAXi1xlZBYw5TbmSi9VX91XpzZCsbZAyIOZANl3nuu68IHwEmY9Bgclg6AMHTyNdjwlbLGpBGjBpJrd0zJebPcXigMZAvwTIeCnZAqtb97fqOkD'
-AD_ACCOUNT_ID = 'act_149067477924600'
+# 메타 API 초기화 (환경변수 사용)
+ACCESS_TOKEN = os.getenv('META_ACCESS_TOKEN', 'YOUR_ACCESS_TOKEN_HERE')
+AD_ACCOUNT_ID = os.getenv('META_AD_ACCOUNT_ID', 'act_XXXXXXXXXX')
 
 # API 초기화
+if ACCESS_TOKEN == 'YOUR_ACCESS_TOKEN_HERE':
+    print("⚠️  환경변수 META_ACCESS_TOKEN을 설정하세요")
+    print("    또는 app.py (Streamlit UI)를 사용하세요")
+    sys.exit(1)
+
 FacebookAdsApi.init(access_token=ACCESS_TOKEN)
 
 # 타겟 캠페인

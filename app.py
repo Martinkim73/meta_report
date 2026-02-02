@@ -153,13 +153,23 @@ section[data-testid="stSidebar"] .stRadio label {
 # ─── 데이터 I/O ───────────────────────────────────────────────────────────
 
 def load_clients():
+    """클라이언트 정보 로드 (st.secrets 우선, 없으면 clients.json)"""
+    # 1. Streamlit Secrets 확인 (배포 환경)
+    if hasattr(st, 'secrets') and 'clients' in st.secrets:
+        return dict(st.secrets['clients'])
+
+    # 2. 로컬 clients.json 사용 (개발 환경)
     if CLIENTS_FILE.exists():
         with open(CLIENTS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
+
     return {}
 
 
 def save_clients(clients):
+    """클라이언트 정보 저장 (로컬 파일만)"""
+    # Streamlit Cloud에서는 secrets를 직접 수정할 수 없음
+    # 로컬 개발 환경에서만 파일 저장
     with open(CLIENTS_FILE, 'w', encoding='utf-8') as f:
         json.dump(clients, f, ensure_ascii=False, indent=2)
 

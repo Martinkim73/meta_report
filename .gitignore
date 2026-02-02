@@ -27,10 +27,13 @@ wheels/
 .env
 config.py
 secrets.json
+clients.json
+.streamlit/secrets.toml
 
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -45,3 +48,4 @@ Thumbs.db
 # Generated data & session logs
 discord_report_data.json
 *업데이트 사항
+*토큰*

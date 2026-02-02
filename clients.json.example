@@ -1,0 +1,11 @@
+{
+  "광고주명": {
+    "access_token": "YOUR_META_ACCESS_TOKEN",
+    "ad_account_id": "act_XXXXXXXXXX",
+    "target_campaigns": ["캠페인1", "캠페인2"],
+    "min_spend": 250000,
+    "low_roas_threshold": 85,
+    "discord_webhook": "https://discord.com/api/webhooks/...",
+    "budget_rule_pct": 50
+  }
+}
