@@ -5,6 +5,11 @@
 - Branch: main
 - 작업 완료 후 항상 commit + push origin main 수행할 것
 
+## 자동 저장 규칙
+- **토큰 사용량 90% 도달 시**: 자동으로 git commit + push 수행
+- 현재 작업 상태를 CLAUDE.md "현재 상태" 섹션에 업데이트
+- 진행 중인 작업, 다음 단계, 주요 결정사항 기록
+
 ## 구조
 - `app.py` - Streamlit 메인 앱 (토스 스타일 UI)
 - `analysis_engine.py` - 메타 광고 분석 엔진 (파라미터화)
