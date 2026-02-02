@@ -53,7 +53,12 @@ budget_rule_pct = 50
 - ✅ Streamlit 웹 앱 완성 (토스 스타일 UI)
 - ✅ 보안 강화: 민감정보 gitignore, st.secrets 지원
 - ✅ 로컬 실행 가능
-- ⏳ Streamlit Cloud 배포 준비 완료
+- ✅ **Streamlit Cloud 배포 완료!**
+
+### 🚀 배포된 앱
+- **URL**: https://metareport-auhbmmwl5ryy4chf93n9ii.streamlit.app/
+- **상태**: 운영 중
+- **토큰**: 장기 토큰 (60일, ~2026.04.03 만료)
 
 ### 보안 개선 (2026.02.03)
 - `clients.json` → .gitignore 추가 (민감정보 보호)
@@ -61,7 +66,10 @@ budget_rule_pct = 50
 - `meta_analysis_report.py` → 하드코딩 토큰 제거, 환경변수 사용
 - `clients.json.example` 추가 (설정 가이드)
 - `.streamlit/secrets.toml.example` 추가 (배포 가이드)
+- Meta Access Token & Discord Webhook 재발급
 
-### 다음 단계
-- Streamlit Cloud에 배포
-- 배포 URL 확인 및 테스트
+### 다음 작업 아이디어
+- [ ] 광고 소재 자동 업로드 기능
+- [ ] AI 광고 문구 자동 생성
+- [ ] 성과 기반 자동 ON/OFF
+- [ ] 주간/월간 리포트 자동화
