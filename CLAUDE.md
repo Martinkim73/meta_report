@@ -84,6 +84,11 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 - 사이드바 메뉴 + 상세 설명
 - 모든 입력 필드에 설명 추가
 - 용어 설명 (ROAS, CPA, DA/VA)
+- **GitHub 저장 완료** (commit: 96be941)
+
+### 🖥️ 로컬 개발 환경
+- 서버 실행 중: http://localhost:3001
+- 프로젝트 위치: C:\Users\PC\OneDrive\Desktop\meta_report
 
 ### 🚧 구현 예정 (우선순위)
 1. **Meta API 연동** (lib/meta-api.ts)
