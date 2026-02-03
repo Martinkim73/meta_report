@@ -16,7 +16,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--color-border);
   }
   body {
     @apply bg-background text-foreground;
@@ -33,5 +33,6 @@
 }
 
 @utility toss-input {
-  @apply w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:outline-none transition-colors;
+  @apply w-full px-4 py-3 rounded-xl border focus:border-primary focus:outline-none transition-colors;
+  border-color: var(--color-border);
 }
