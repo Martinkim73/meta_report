@@ -1,8 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-primary: #3182F6;
+  --color-secondary: #1B64DA;
+  --color-background: #F4F5F7;
+  --color-foreground: #191F28;
+  --color-muted: #8B95A1;
+  --color-border: #E5E8EB;
+  --color-error: #F04452;
+  --color-success: #14B17C;
+
+  --font-family-sans: 'Noto Sans KR', sans-serif;
+}
 
 @layer base {
   * {
@@ -10,20 +20,18 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: var(--font-family-sans);
   }
 }
 
-@layer components {
-  .toss-card {
-    @apply bg-white rounded-2xl p-6 shadow-sm border border-gray-100;
-  }
+@utility toss-card {
+  @apply bg-white rounded-2xl p-6 shadow-sm border border-gray-100;
+}
 
-  .toss-button {
-    @apply bg-primary hover:bg-secondary text-white font-medium rounded-xl px-6 py-3 transition-colors;
-  }
+@utility toss-button {
+  @apply bg-primary hover:bg-secondary text-white font-medium rounded-xl px-6 py-3 transition-colors;
+}
 
-  .toss-input {
-    @apply w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:outline-none transition-colors;
-  }
+@utility toss-input {
+  @apply w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:outline-none transition-colors;
 }

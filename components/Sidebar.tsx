@@ -19,6 +19,13 @@ const menuItems = [
     help: "Meta 광고 계정 정보를 관리합니다",
   },
   {
+    href: "/upload",
+    icon: "🎨",
+    label: "소재 등록",
+    description: "업로드",
+    help: "DA/VA 소재를 한번에 등록합니다",
+  },
+  {
     href: "/results",
     icon: "📊",
     label: "분석 결과",
