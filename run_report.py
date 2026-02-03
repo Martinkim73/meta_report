@@ -57,6 +57,22 @@ def main():
         success, msg = send_report(webhook_url, report_text)
         print(f"[{'OK' if success else 'FAIL'}] {client_name}: {msg}")
 
+        # 전체 계정 집계 출력
+        df = result.get('df_grouped')
+        if df is not None and not df.empty:
+            total_spend = df['spend'].sum()
+            total_revenue = df['revenue'].sum()
+            total_purchases = df['purchases'].sum()
+            total_regs = df['registrations'].sum()
+            overall_roas = (total_revenue / total_spend * 100) if total_spend > 0 else 0
+            print(f"\n[전체 계정 D7 집계]")
+            print(f"  총 지출: {total_spend:,.0f}원")
+            print(f"  총 매출: {total_revenue:,.0f}원")
+            print(f"  총 구매: {int(total_purchases)}건")
+            print(f"  총 가입: {int(total_regs)}건")
+            print(f"  전체 ROAS: {overall_roas:.0f}%")
+            print(f"  활성 소재 수: {len(df)}개")
+
         # 디버그 정보 출력
         if result.get('debug_info'):
             print(f"\n[DEBUG] {client_name} 상세:\n{result['debug_info']}")

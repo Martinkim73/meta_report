@@ -258,7 +258,6 @@ def analyze_meta_ads(config, progress_callback=None):
                         'value': target_campaign_ids
                     }
                 ],
-                'action_attribution_windows': ['7d_click', '1d_view'],
                 'limit': 500
             }
         )),
@@ -363,8 +362,6 @@ def analyze_meta_ads(config, progress_callback=None):
         revenue = 0
 
         def get_action_value(action_obj):
-            if '7d_click' in action_obj or '1d_view' in action_obj:
-                return float(action_obj.get('7d_click', 0)) + float(action_obj.get('1d_view', 0))
             return float(action_obj.get('value', 0))
 
         if 'actions' in insight:
@@ -474,4 +471,5 @@ def analyze_meta_ads(config, progress_callback=None):
         'expert_analysis': expert_analysis,
         'debug_info': "\n".join(debug_lines),
         'analysis_period': analysis_period,
+        'df_grouped': df_grouped,
     }
