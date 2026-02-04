@@ -26,7 +26,7 @@ interface CreativePayload {
   name: string;
   body: string;
   title: string;
-  music: string;
+  musicIds: string[];
   media: MediaUpload[];
 }
 
@@ -132,7 +132,6 @@ async function createAdCreative(
     // Video ad
     objectStorySpec = {
       page_id: config.page_id,
-      instagram_actor_id: config.instagram_actor_id,
       video_data: {
         video_id: mediaAssets[0]?.videoId,
         message: creative.body,
@@ -147,7 +146,6 @@ async function createAdCreative(
     // Image ad
     objectStorySpec = {
       page_id: config.page_id,
-      instagram_actor_id: config.instagram_actor_id,
       link_data: {
         link,
         message: creative.body,
@@ -157,6 +155,9 @@ async function createAdCreative(
       },
     };
   }
+
+  // Instagram actor ID는 별도로 추가 (선택적)
+  // Meta 앱이 라이브 모드일 때만 작동
 
   const creativeData = {
     access_token: accessToken,

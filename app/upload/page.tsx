@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 type CreativeType = "DA" | "VA";
 
@@ -17,29 +17,30 @@ interface Creative {
   body: string;
   title: string;
   media: MediaSlot[];
-  music: string;
+  musicIds: string[];
 }
 
 const MUSIC_PRESETS = [
-  { value: "", label: "음악 없음" },
-  { value: "the_girl_in_blue", label: "The Girl in Blue" },
-  { value: "same_old", label: "Same Old" },
-  { value: "the_snapper_jumbo", label: "The Snapper_Jumbo" },
-  { value: "when_u_leave_tash", label: "When U Leave_Tash" },
-  { value: "you_kiri_t", label: "You - Kiri T" },
+  { id: "the_girl_in_blue", label: "The Girl in Blue" },
+  { id: "same_old", label: "Same Old" },
+  { id: "the_snapper_jumbo", label: "The Snapper_Jumbo" },
+  { id: "when_u_leave_tash", label: "When U Leave_Tash" },
+  { id: "you_kiri_t", label: "You - Kiri T" },
 ];
 
+const DEFAULT_MUSIC_IDS = MUSIC_PRESETS.map((m) => m.id);
+
 const DA_MEDIA_SLOTS = [
-  { label: "피드 이미지", ratio: "1:1" },
-  { label: "스토리 이미지", ratio: "9:16" },
-  { label: "릴스 이미지", ratio: "9:16" },
-  { label: "기본 이미지", ratio: "1:1" },
+  { label: "피드 이미지", ratio: "4:5", keywords: ["4x5", "4_5", "feed", "피드"] },
+  { label: "스토리 이미지", ratio: "9:16", keywords: ["9x16", "9_16", "story", "스토리"] },
+  { label: "릴스 이미지", ratio: "9:16", keywords: ["reel", "릴스"] },
+  { label: "기본 이미지", ratio: "1:1", keywords: ["1x1", "1_1", "square", "기본", "default"] },
 ];
 
 const VA_MEDIA_SLOTS = [
-  { label: "기본 영상", ratio: "자유" },
-  { label: "스토리/릴스 영상", ratio: "9:16" },
-  { label: "피드 영상", ratio: "1:1" },
+  { label: "기본 영상", ratio: "자유", keywords: ["default", "기본"] },
+  { label: "스토리/릴스 영상", ratio: "9:16", keywords: ["9x16", "9_16", "story", "reel", "스토리", "릴스"] },
+  { label: "피드 영상", ratio: "1:1", keywords: ["1x1", "1_1", "feed", "피드", "square"] },
 ];
 
 function createEmptyCreative(type: CreativeType): Creative {
@@ -49,92 +50,75 @@ function createEmptyCreative(type: CreativeType): Creative {
     name: "",
     body: "",
     title: "",
-    media: slots.map((s) => ({ ...s, file: null, preview: null })),
-    music: "the_girl_in_blue",
+    media: slots.map((s) => ({ label: s.label, ratio: s.ratio, file: null, preview: null })),
+    musicIds: [...DEFAULT_MUSIC_IDS], // 기본 5개 음악 모두 선택
   };
 }
 
-function MediaUploadSlot({
-  slot,
-  type,
-  onChange,
-}: {
-  slot: MediaSlot;
-  type: CreativeType;
-  onChange: (file: File | null) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const isImage = type === "DA";
-  const accept = isImage ? "image/*" : "video/*";
+// 파일명 또는 이미지 비율로 슬롯 매핑
+async function detectSlotIndex(file: File, type: CreativeType): Promise<number> {
+  const filename = file.name.toLowerCase();
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    onChange(file);
-  };
+  if (type === "DA" && file.type.startsWith("image/")) {
+    const ratio = await getImageAspectRatio(file);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0] || null;
-    if (file) onChange(file);
-  };
+    // 1. 먼저 비율로 대분류
+    // 4:5 = 0.8
+    if (ratio >= 0.75 && ratio <= 0.85) {
+      return 0; // 피드 4:5
+    }
 
-  return (
-    <div
-      className={`
-        relative border-2 border-dashed rounded-xl p-3 text-center cursor-pointer
-        transition-all hover:border-primary hover:bg-blue-50/50
-        ${slot.file ? "border-primary bg-blue-50/30" : "border-gray-200"}
-      `}
-      onClick={() => inputRef.current?.click()}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={handleDrop}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={handleFile}
-      />
+    // 9:16 = 0.5625 - 스토리 또는 릴스
+    if (ratio >= 0.5 && ratio <= 0.65) {
+      // 파일명에 reel, 릴스, reels가 있으면 릴스 슬롯
+      const isReels = filename.includes("reel") || filename.includes("릴스");
+      return isReels ? 2 : 1; // 2: 릴스, 1: 스토리
+    }
 
-      {slot.preview ? (
-        <div className="space-y-2">
-          {isImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={slot.preview}
-              alt={slot.label}
-              className="w-full h-20 object-cover rounded-lg"
-            />
-          ) : (
-            <div className="w-full h-20 bg-gray-900 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs">
-                {slot.file?.name}
-              </span>
-            </div>
-          )}
-          <button
-            type="button"
-            className="text-xs text-error hover:underline"
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange(null);
-            }}
-          >
-            삭제
-          </button>
-        </div>
-      ) : (
-        <div className="py-2">
-          <div className="text-2xl mb-1">{isImage ? "🖼" : "🎬"}</div>
-          <div className="text-xs font-medium text-foreground">
-            {slot.label}
-          </div>
-          <div className="text-[10px] text-muted mt-0.5">{slot.ratio}</div>
-        </div>
-      )}
-    </div>
-  );
+    // 1:1 = 1.0
+    if (ratio >= 0.95 && ratio <= 1.05) {
+      return 3; // 기본 1:1
+    }
+
+    // 비율로 매칭 안되면 파일명으로 시도
+    if (filename.includes("4x5") || filename.includes("4_5") || filename.includes("feed") || filename.includes("피드")) {
+      return 0;
+    }
+    if (filename.includes("reel") || filename.includes("릴스")) {
+      return 2;
+    }
+    if (filename.includes("9x16") || filename.includes("9_16") || filename.includes("story") || filename.includes("스토리")) {
+      return 1;
+    }
+    if (filename.includes("1x1") || filename.includes("1_1") || filename.includes("square") || filename.includes("기본")) {
+      return 3;
+    }
+  }
+
+  // VA 타입은 파일명으로만 매칭
+  if (type === "VA") {
+    const slots = VA_MEDIA_SLOTS;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].keywords.some((kw) => filename.includes(kw.toLowerCase()))) {
+        return i;
+      }
+    }
+  }
+
+  // 매칭 안되면 -1 (빈 슬롯에 배치)
+  return -1;
+}
+
+function getImageAspectRatio(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve(img.width / img.height);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => resolve(1);
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 function CreativeCard({
@@ -152,6 +136,10 @@ function CreativeCard({
   onRemove: () => void;
   onDuplicate: () => void;
 }) {
+  const dropRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   const updateMedia = (slotIndex: number, file: File | null) => {
     const newMedia = [...creative.media];
     newMedia[slotIndex] = {
@@ -162,6 +150,54 @@ function CreativeCard({
     onUpdate({ ...creative, media: newMedia });
   };
 
+  const handleMultipleFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const newMedia = [...creative.media];
+    const usedSlots = new Set<number>();
+
+    // 이미 파일이 있는 슬롯은 사용된 것으로 표시
+    newMedia.forEach((m, i) => {
+      if (m.file) usedSlots.add(i);
+    });
+
+    for (const file of fileArray) {
+      let slotIndex = await detectSlotIndex(file, type);
+
+      // 감지된 슬롯이 이미 사용중이면 다음 빈 슬롯 찾기
+      if (slotIndex === -1 || usedSlots.has(slotIndex)) {
+        slotIndex = newMedia.findIndex((_, i) => !usedSlots.has(i));
+      }
+
+      if (slotIndex !== -1 && !usedSlots.has(slotIndex)) {
+        newMedia[slotIndex] = {
+          ...newMedia[slotIndex],
+          file,
+          preview: URL.createObjectURL(file),
+        };
+        usedSlots.add(slotIndex);
+      }
+    }
+
+    onUpdate({ ...creative, media: newMedia });
+  }, [creative, type, onUpdate]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files.length > 0) {
+      handleMultipleFiles(e.dataTransfer.files);
+    }
+  }, [handleMultipleFiles]);
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleMultipleFiles(e.target.files);
+    }
+  };
+
+  const filledCount = creative.media.filter((m) => m.file).length;
+  const totalSlots = creative.media.length;
+
   return (
     <div className="toss-card group">
       <div className="flex items-center justify-between mb-4">
@@ -170,6 +206,9 @@ function CreativeCard({
             {index + 1}
           </span>
           <span className="font-bold text-foreground">소재 {index + 1}</span>
+          <span className="text-xs text-muted">
+            ({filledCount}/{totalSlots} 이미지)
+          </span>
         </div>
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
@@ -189,19 +228,98 @@ function CreativeCard({
         </div>
       </div>
 
-      {/* Media uploads */}
+      {/* 드래그앤드롭 영역 */}
       <div
-        className={`grid gap-3 mb-5 ${
-          type === "DA" ? "grid-cols-4" : "grid-cols-3"
-        }`}
+        ref={dropRef}
+        className={`
+          relative border-2 border-dashed rounded-xl p-4 mb-4 transition-all cursor-pointer
+          ${isDragging ? "border-primary bg-blue-50" : "border-gray-200 hover:border-primary hover:bg-blue-50/30"}
+        `}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
       >
+        <input
+          ref={inputRef}
+          type="file"
+          accept={type === "DA" ? "image/*" : "video/*"}
+          multiple
+          className="hidden"
+          onChange={handleFileInput}
+        />
+        <div className="text-center py-2">
+          <div className="text-3xl mb-2">{type === "DA" ? "🖼" : "🎬"}</div>
+          <p className="font-medium text-foreground">
+            이미지를 드래그하거나 클릭해서 선택
+          </p>
+          <p className="text-xs text-muted mt-1">
+            여러 장 한번에 올리면 파일명/비율로 자동 분류됩니다
+          </p>
+          <p className="text-xs text-primary mt-2">
+            파일명에 4x5, 9x16, reel, story, feed 포함시 자동 매핑
+          </p>
+        </div>
+      </div>
+
+      {/* 미디어 미리보기 그리드 */}
+      <div className={`grid gap-3 mb-5 ${type === "DA" ? "grid-cols-4" : "grid-cols-3"}`}>
         {creative.media.map((slot, i) => (
-          <MediaUploadSlot
+          <div
             key={i}
-            slot={slot}
-            type={type}
-            onChange={(file) => updateMedia(i, file)}
-          />
+            className={`
+              relative rounded-xl overflow-hidden border-2 transition-all
+              ${slot.file ? "border-primary" : "border-gray-200 border-dashed"}
+            `}
+          >
+            {/* 비율에 맞는 컨테이너 */}
+            <div
+              className="relative bg-gray-100"
+              style={{
+                paddingBottom: slot.ratio === "4:5" ? "125%"
+                  : slot.ratio === "9:16" ? "177.78%"
+                  : slot.ratio === "1:1" ? "100%"
+                  : slot.ratio === "자유" ? "100%"
+                  : "100%"
+              }}
+            >
+              {slot.preview ? (
+                <>
+                  {type === "DA" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={slot.preview}
+                      alt={slot.label}
+                      className="absolute inset-0 w-full h-full object-contain bg-gray-900"
+                    />
+                  ) : (
+                    <video
+                      src={slot.preview}
+                      className="absolute inset-0 w-full h-full object-contain bg-gray-900"
+                      muted
+                    />
+                  )}
+                  {/* 삭제 버튼 */}
+                  <button
+                    type="button"
+                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full text-xs font-bold hover:bg-red-600"
+                    onClick={() => updateMedia(i, null)}
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
+                  <span className="text-2xl opacity-30">{type === "DA" ? "🖼" : "🎬"}</span>
+                </div>
+              )}
+            </div>
+            {/* 라벨 */}
+            <div className="p-2 bg-white text-center">
+              <div className="text-xs font-medium truncate">{slot.label}</div>
+              <div className="text-[10px] text-muted">{slot.ratio}</div>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -255,22 +373,32 @@ function CreativeCard({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">배경 음악</label>
-            <select
-              className="toss-input text-sm"
-              value={creative.music}
-              onChange={(e) =>
-                onUpdate({ ...creative, music: e.target.value })
-              }
-            >
+            <label className="block text-sm font-medium mb-1.5">
+              배경 음악 ({creative.musicIds.length}/5)
+            </label>
+            <div className="space-y-2 p-3 bg-gray-50 rounded-xl">
               {MUSIC_PRESETS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
+                <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={creative.musicIds.includes(m.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        if (creative.musicIds.length < 5) {
+                          onUpdate({ ...creative, musicIds: [...creative.musicIds, m.id] });
+                        }
+                      } else {
+                        onUpdate({ ...creative, musicIds: creative.musicIds.filter((id) => id !== m.id) });
+                      }
+                    }}
+                    className="w-4 h-4 text-primary rounded"
+                  />
+                  <span className="text-sm">{m.label}</span>
+                </label>
               ))}
-            </select>
+            </div>
             <p className="text-xs text-muted mt-1">
-              릴스/스토리에 적용되는 음악이에요
+              릴스/스토리에 적용 (최대 5개)
             </p>
           </div>
         </div>
@@ -352,7 +480,7 @@ export default function UploadPage() {
             name: c.name,
             body: c.body,
             title: c.title,
-            music: c.music,
+            musicIds: c.musicIds,
             media: await Promise.all(
               c.media.map(async (m) => {
                 const buffer = await m.file!.arrayBuffer();
@@ -400,7 +528,7 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-5xl">
       <h1 className="text-3xl font-bold mb-2">소재 등록</h1>
       <p className="text-muted mb-8">
         여러 소재를 한번에 만들어보세요
@@ -448,7 +576,7 @@ export default function UploadPage() {
             <div className="text-lg">{t === "DA" ? "🖼 DA 이미지" : "🎬 VA 영상"}</div>
             <div className={`text-xs mt-1 font-normal ${type === t ? "text-blue-100" : ""}`}>
               {t === "DA"
-                ? "이미지 4장 (피드, 스토리, 릴스, 기본)"
+                ? "이미지 4장 (피드 4:5, 스토리 9:16, 릴스 9:16, 기본 1:1)"
                 : "영상 3개 (기본, 스토리/릴스, 피드)"}
             </div>
           </button>
@@ -511,7 +639,7 @@ export default function UploadPage() {
               <span className="text-muted">노출 위치 매핑</span>
               <p className="font-medium">
                 {type === "DA"
-                  ? "피드(1:1), 스토리(9:16), 릴스(9:16), 기본(1:1) 자동 매핑"
+                  ? "피드(4:5), 스토리(9:16), 릴스(9:16), 기본(1:1) 자동 매핑"
                   : "기본(자유), 스토리/릴스(9:16), 피드(1:1) 자동 매핑"}
               </p>
             </div>
@@ -546,7 +674,7 @@ export default function UploadPage() {
 
       {/* Submit area */}
       <div className="sticky bottom-0 bg-background py-4 border-t border-border -mx-8 px-8">
-        <div className="flex items-center justify-between max-w-4xl">
+        <div className="flex items-center justify-between max-w-5xl">
           <div className="text-sm">
             <span className="text-muted">준비된 소재</span>{" "}
             <span className="font-bold text-primary">{filledCount}개</span>

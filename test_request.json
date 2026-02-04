@@ -1,0 +1,17 @@
+{
+  "type": "DA",
+  "clientName": "AI코딩밸리",
+  "creatives": [{
+    "name": "test_creative_api",
+    "body": "테스트 광고 문구입니다",
+    "title": "테스트 제목",
+    "music": "",
+    "media": [{
+      "slot": "피드 이미지",
+      "ratio": "1:1",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNk+M9QzwAEjDAGNzYAAIoaB1606zMAAAAASUVORK5CYII=",
+      "filename": "test.png",
+      "mimeType": "image/png"
+    }]
+  }]
+}
