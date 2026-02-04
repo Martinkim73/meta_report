@@ -178,72 +178,33 @@ async function createAdCreative(
       object_story_spec: objectStorySpec,
     };
   } else {
-    // Image: asset_feed_spec으로 다중 이미지 + 노출 위치별 매핑
-    const images = mediaAssets
-      .filter((m) => m.hash)
-      .map((m) => ({ hash: m.hash }));
-
-    // Build customization rules for placement-specific images
-    const customizationRules: Array<{
-      customization_spec: { publisher_platforms: string[]; facebook_positions?: string[]; instagram_positions?: string[] };
-      image_hash: string;
-    }> = [];
-
-    for (const asset of mediaAssets) {
-      if (!asset.hash) continue;
-
-      const placements = SLOT_PLACEMENTS[asset.slot] || [];
-      if (placements.length === 0) continue;
-
-      const fbPositions = placements.filter((p) => p.startsWith("facebook_")).map((p) => p.replace("facebook_", ""));
-      const igPositions = placements.filter((p) => p.startsWith("instagram_")).map((p) => p.replace("instagram_", ""));
-
-      const spec: { publisher_platforms: string[]; facebook_positions?: string[]; instagram_positions?: string[] } = {
-        publisher_platforms: [],
-      };
-
-      if (fbPositions.length > 0) {
-        spec.publisher_platforms.push("facebook");
-        spec.facebook_positions = fbPositions;
-      }
-      if (igPositions.length > 0) {
-        spec.publisher_platforms.push("instagram");
-        spec.instagram_positions = igPositions;
-      }
-
-      if (spec.publisher_platforms.length > 0) {
-        customizationRules.push({
-          customization_spec: spec,
-          image_hash: asset.hash,
-        });
-      }
+    // Image: link_data 방식 (첫 번째 이미지 사용)
+    const firstImage = mediaAssets.find((m) => m.hash);
+    if (!firstImage?.hash) {
+      throw new Error("No image hash available");
     }
 
-    // asset_feed_spec 구성
-    const assetFeedSpec: Record<string, unknown> = {
-      images,
-      bodies: [{ text: creative.body }],
-      titles: [{ text: creative.title }],
-      ad_formats: ["SINGLE_IMAGE"],
-      call_to_action_types: ["LEARN_MORE"],
-      link_urls: [{ website_url: link }],
-      ...(customizationRules.length > 0 && { asset_customization_rules: customizationRules }),
-    };
-
-    // object_story_spec (기본 구조)
     const objectStorySpec: Record<string, unknown> = {
       page_id: config.page_id,
+      link_data: {
+        image_hash: firstImage.hash,
+        link,
+        message: creative.body,
+        name: creative.title,
+        call_to_action: { type: "LEARN_MORE" },
+      },
     };
 
-    if (config.instagram_actor_id) {
-      objectStorySpec.instagram_actor_id = config.instagram_actor_id;
-    }
+    // TODO: instagram_actor_id 지원 - 현재 Meta API 호환성 이슈로 비활성화
+    // Instagram 노출은 광고세트 타겟팅으로 처리됨
+    // if (config.instagram_actor_id) {
+    //   objectStorySpec.instagram_actor_id = config.instagram_actor_id;
+    // }
 
     creativeData = {
       access_token: accessToken,
       name: creative.name,
       object_story_spec: objectStorySpec,
-      asset_feed_spec: assetFeedSpec,
     };
 
     // 옴니채널 광고세트용 object_store_url 추가
