@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 type CreativeType = "DA" | "VA";
 
@@ -286,6 +286,20 @@ export default function UploadPage() {
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCommon, setShowCommon] = useState(false);
+  const [clients, setClients] = useState<string[]>([]);
+  const [selectedClient, setSelectedClient] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/clients")
+      .then((res) => res.json())
+      .then((data) => {
+        setClients(data.clients || []);
+        if (data.clients?.length > 0) {
+          setSelectedClient(data.clients[0]);
+        }
+      })
+      .catch(() => setClients([]));
+  }, []);
 
   const handleTypeChange = (newType: CreativeType) => {
     if (newType === type) return;
@@ -328,10 +342,61 @@ export default function UploadPage() {
   const handleSubmit = async () => {
     if (filledCount === 0) return;
     setIsSubmitting(true);
-    // TODO: Meta API upload implementation
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsSubmitting(false);
-    alert(`${filledCount}개 소재 등록이 완료되었습니다! (API 연동 후 실제 업로드)`);
+
+    try {
+      // Convert files to base64
+      const creativesPayload = await Promise.all(
+        creatives
+          .filter((c) => c.name && c.body && c.title && c.media.every((m) => m.file))
+          .map(async (c) => ({
+            name: c.name,
+            body: c.body,
+            title: c.title,
+            music: c.music,
+            media: await Promise.all(
+              c.media.map(async (m) => {
+                const buffer = await m.file!.arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                let binary = "";
+                bytes.forEach((b) => (binary += String.fromCharCode(b)));
+                const base64 = btoa(binary);
+                return {
+                  slot: m.label,
+                  ratio: m.ratio,
+                  base64,
+                  filename: m.file!.name,
+                  mimeType: m.file!.type,
+                };
+              })
+            ),
+          }))
+      );
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          clientName: selectedClient,
+          creatives: creativesPayload,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "업로드 실패");
+      }
+
+      alert(`${result.message}\n\n사용된 광고세트: ${result.adsetsUsed?.join(", ")}`);
+
+      // Reset form on success
+      setCreatives([createEmptyCreative(type)]);
+    } catch (error) {
+      alert(`오류: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -340,6 +405,29 @@ export default function UploadPage() {
       <p className="text-muted mb-8">
         여러 소재를 한번에 만들어보세요
       </p>
+
+      {/* Client selector */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-2">광고주 선택</label>
+        <select
+          className="toss-input"
+          value={selectedClient}
+          onChange={(e) => setSelectedClient(e.target.value)}
+        >
+          {clients.length === 0 ? (
+            <option value="">광고주를 불러오는 중...</option>
+          ) : (
+            clients.map((client) => (
+              <option key={client} value={client}>
+                {client}
+              </option>
+            ))
+          )}
+        </select>
+        <p className="text-xs text-muted mt-1">
+          소재를 등록할 광고주를 선택하세요
+        </p>
+      </div>
 
       {/* Type selector */}
       <div className="flex gap-3 mb-6">
