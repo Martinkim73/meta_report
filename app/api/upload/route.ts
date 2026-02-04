@@ -235,6 +235,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // page_id가 빈 경우 Meta API에서 자동 조회
+    if (!config.page_id) {
+      const pagesRes = await fetch(
+        `${GRAPH_API_BASE}/me/accounts?fields=id,name&access_token=${config.access_token}`
+      );
+      const pagesData = await pagesRes.json();
+      if (pagesData.data && pagesData.data.length > 0) {
+        config.page_id = pagesData.data[0].id;
+      } else {
+        return NextResponse.json(
+          { error: "Facebook 페이지를 찾을 수 없습니다. 광고주 설정에서 페이지 ID를 입력해주세요." },
+          { status: 400 }
+        );
+      }
+    }
+
     const isVideo = type === "VA";
     const results: {
       creativeName: string;
