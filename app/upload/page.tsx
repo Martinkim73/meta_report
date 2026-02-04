@@ -445,9 +445,11 @@ export default function UploadPage() {
     fetch("/api/clients")
       .then((res) => res.json())
       .then((data) => {
-        setClients(data.clients || []);
-        if (data.clients?.length > 0) {
-          setSelectedClient(data.clients[0]);
+        // API returns [{name, adAccountId, ...}], extract names only
+        const clientNames = (data.clients || []).map((c: { name: string }) => c.name);
+        setClients(clientNames);
+        if (clientNames.length > 0) {
+          setSelectedClient(clientNames[0]);
         }
       })
       .catch(() => setClients([]));
