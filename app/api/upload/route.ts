@@ -99,7 +99,7 @@ async function createAdCreative(
     // DA: asset_feed_spec — 4장 이미지를 비율별로 배치 최적화
     const images = mediaAssets
       .filter((m) => m.hash)
-      .map((m) => ({ image_hash: m.hash }));
+      .map((m) => ({ hash: m.hash }));
 
     if (images.length === 0) {
       throw new Error("No image hashes available");
