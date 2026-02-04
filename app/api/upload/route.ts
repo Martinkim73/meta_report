@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, ClientConfig } from "@/lib/redis";
 
-// Note: For App Router, body size is configured in next.config.js
-// experimental.serverActions.bodySizeLimit or using streaming
+export const runtime = "nodejs";
 
 const GRAPH_API_VERSION = "v22.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
@@ -290,7 +289,8 @@ async function createAd(
 
 export async function POST(request: NextRequest) {
   try {
-    const body: UploadRequest = await request.json();
+    const arrayBuffer = await request.arrayBuffer();
+    const body: UploadRequest = JSON.parse(Buffer.from(arrayBuffer).toString("utf-8"));
     const { type, clientName, adsetIds, adsets: adsetInfos, creatives } = body;
 
     // Get client config
