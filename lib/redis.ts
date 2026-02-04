@@ -6,16 +6,17 @@ const CLIENTS_KEY = "clients";
 let redisInstance: Redis | null = null;
 
 function getRedis(): Redis | null {
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+  // Support both KV_ (Vercel Marketplace) and UPSTASH_ (manual) env vars
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
     console.error("Redis environment variables not configured");
     return null;
   }
 
   if (!redisInstance) {
-    redisInstance = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
+    redisInstance = new Redis({ url, token });
   }
   return redisInstance;
 }
