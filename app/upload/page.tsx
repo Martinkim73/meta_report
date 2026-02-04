@@ -418,6 +418,7 @@ interface Adset {
   name: string;
   status: string;
   compatible: boolean;
+  isOmnichannel: boolean;
   warning: string | null;
 }
 
@@ -576,13 +577,18 @@ export default function UploadPage() {
           }))
       );
 
+      // 선택된 광고세트 정보 (omnichannel 여부 포함)
+      const selectedAdsets = adsets
+        .filter((a) => selectedAdsetIds.includes(a.id))
+        .map((a) => ({ id: a.id, name: a.name, isOmnichannel: a.isOmnichannel }));
+
       const response = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
           clientName: selectedClient,
-          adsetIds: selectedAdsetIds,
+          adsets: selectedAdsets,
           creatives: creativesPayload,
         }),
       });
@@ -647,29 +653,36 @@ export default function UploadPage() {
             ) : campaigns.length === 0 ? (
               <p className="text-sm text-muted">캠페인이 없습니다</p>
             ) : (
-              campaigns.map((c) => (
-                <label
-                  key={c.id}
-                  className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCampaignIds.includes(c.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedCampaignIds([...selectedCampaignIds, c.id]);
-                      } else {
-                        setSelectedCampaignIds(selectedCampaignIds.filter((id) => id !== c.id));
-                      }
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm flex-1">
-                    {c.name}
-                    {c.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
-                  </span>
-                </label>
-              ))
+              [...campaigns]
+                .sort((a, b) => {
+                  // ACTIVE first, then PAUSED
+                  if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+                  if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
+                  return 0;
+                })
+                .map((c) => (
+                  <label
+                    key={c.id}
+                    className={`flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded ${c.status !== "ACTIVE" ? "opacity-50" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCampaignIds.includes(c.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCampaignIds([...selectedCampaignIds, c.id]);
+                        } else {
+                          setSelectedCampaignIds(selectedCampaignIds.filter((id) => id !== c.id));
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm flex-1">
+                      {c.name}
+                      {c.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
+                    </span>
+                  </label>
+                ))
             )}
           </div>
         </div>
@@ -685,33 +698,42 @@ export default function UploadPage() {
             ) : adsets.length === 0 ? (
               <p className="text-sm text-muted">캠페인을 먼저 선택하세요</p>
             ) : (
-              adsets.map((a) => (
-                <label
-                  key={a.id}
-                  className={`flex items-center gap-2 py-1 cursor-pointer ${!a.compatible ? "opacity-50" : ""}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedAdsetIds.includes(a.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedAdsetIds([...selectedAdsetIds, a.id]);
-                      } else {
-                        setSelectedAdsetIds(selectedAdsetIds.filter((id) => id !== a.id));
-                      }
-                    }}
-                    disabled={!a.compatible}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm flex-1">
-                    {a.name}
-                    {a.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
-                  </span>
-                  {a.warning && (
-                    <span className="text-xs text-orange-500" title={a.warning}>⚠️</span>
-                  )}
-                </label>
-              ))
+              [...adsets]
+                .sort((a, b) => {
+                  // 1. Compatible + ACTIVE first
+                  // 2. Compatible + PAUSED
+                  // 3. Incompatible (warning) last
+                  const aScore = (a.compatible ? 0 : 100) + (a.status === "ACTIVE" ? 0 : 10);
+                  const bScore = (b.compatible ? 0 : 100) + (b.status === "ACTIVE" ? 0 : 10);
+                  return aScore - bScore;
+                })
+                .map((a) => (
+                  <label
+                    key={a.id}
+                    className={`flex items-center gap-2 py-1 cursor-pointer ${!a.compatible || a.status !== "ACTIVE" ? "opacity-50" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedAdsetIds.includes(a.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAdsetIds([...selectedAdsetIds, a.id]);
+                        } else {
+                          setSelectedAdsetIds(selectedAdsetIds.filter((id) => id !== a.id));
+                        }
+                      }}
+                      disabled={!a.compatible}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm flex-1">
+                      {a.name}
+                      {a.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
+                    </span>
+                    {a.warning && (
+                      <span className="text-xs text-orange-500" title={a.warning}>⚠️</span>
+                    )}
+                  </label>
+                ))
             )}
           </div>
         </div>

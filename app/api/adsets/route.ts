@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
         id: a.id,
         name: a.name,
         status: a.status,
-        compatible: !isOmnichannel && !isApp,
-        warning: isOmnichannel ? "크로스채널 최적화 (object_store_url 필요)" : isApp ? "앱 광고세트" : null,
+        isOmnichannel,
+        compatible: !isApp, // 크로스채널도 호환 가능하게 변경
+        warning: isApp ? "앱 광고세트" : null,
       };
     });
 
