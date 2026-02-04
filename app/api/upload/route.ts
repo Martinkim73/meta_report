@@ -9,9 +9,8 @@ const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 interface MediaUpload {
   slot: string;
   ratio: string;
-  base64: string;
-  filename: string;
-  mimeType: string;
+  hash?: string;
+  videoId?: string;
 }
 
 interface CreativePayload {
@@ -36,72 +35,6 @@ interface UploadRequest {
   creatives: CreativePayload[];
 }
 
-
-// Upload image to Meta and get image hash
-async function uploadImage(
-  adAccountId: string,
-  accessToken: string,
-  base64Data: string,
-  filename: string
-): Promise<{ hash: string; url: string }> {
-  const url = `${GRAPH_API_BASE}/${adAccountId}/adimages`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      access_token: accessToken,
-      bytes: base64Data,
-      name: filename,
-    }),
-  });
-
-  const result = await response.json();
-
-  if (result.error) {
-    const errorDetail = result.error.error_user_msg || result.error.message;
-    throw new Error(`Image upload failed: ${errorDetail}`);
-  }
-
-  // Response format: { images: { [key]: { hash, url } } }
-  const images = result.images;
-  if (!images) {
-    throw new Error("No image data in response");
-  }
-
-  // Get first image from response (key can be 'bytes' or filename)
-  const imageData = Object.values(images)[0] as { hash: string; url: string };
-  return { hash: imageData.hash, url: imageData.url };
-}
-
-// Upload video to Meta and get video ID
-async function uploadVideo(
-  adAccountId: string,
-  accessToken: string,
-  base64Data: string,
-  filename: string
-): Promise<string> {
-  const url = `${GRAPH_API_BASE}/${adAccountId}/advideos`;
-
-  // For videos, we use the source parameter with base64
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      access_token: accessToken,
-      source: base64Data,
-      title: filename,
-    }),
-  });
-
-  const result = await response.json();
-
-  if (result.error) {
-    throw new Error(`Video upload failed: ${result.error.message}`);
-  }
-
-  return result.id;
-}
 
 // Slot to placement mapping
 // Facebook positions: feed, story, marketplace, video_feeds, search, instream_video, right_hand_column
@@ -341,28 +274,10 @@ export async function POST(request: NextRequest) {
 
     // Process each creative
     for (const creative of creatives) {
-      const mediaAssets: { hash?: string; videoId?: string; slot: string }[] = [];
-
-      // Upload media files
-      for (const media of creative.media) {
-        if (isVideo) {
-          const videoId = await uploadVideo(
-            config.ad_account_id,
-            config.access_token,
-            media.base64,
-            media.filename
-          );
-          mediaAssets.push({ videoId, slot: media.slot });
-        } else {
-          const { hash } = await uploadImage(
-            config.ad_account_id,
-            config.access_token,
-            media.base64,
-            media.filename
-          );
-          mediaAssets.push({ hash, slot: media.slot });
-        }
-      }
+      // Media already uploaded via /api/upload-image — use hashes directly
+      const mediaAssets: { hash?: string; videoId?: string; slot: string }[] = creative.media.map(
+        (m) => ({ hash: m.hash, videoId: m.videoId, slot: m.slot })
+      );
 
       const adIds: string[] = [];
       let creativeId = "";

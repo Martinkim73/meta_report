@@ -551,35 +551,57 @@ export default function UploadPage() {
     setIsSubmitting(true);
 
     try {
-      // Convert files to base64
+      const readyCreatives = creatives.filter(
+        (c) => c.name && c.body && c.title && c.media.every((m) => m.file)
+      );
+
+      // Phase 1: 각 이미지/영상을 개별로 업로드 → 해시 수집
       const creativesPayload = await Promise.all(
-        creatives
-          .filter((c) => c.name && c.body && c.title && c.media.every((m) => m.file))
-          .map(async (c) => ({
+        readyCreatives.map(async (c) => {
+          const media = await Promise.all(
+            c.media.map(async (m) => {
+              const buffer = await m.file!.arrayBuffer();
+              const bytes = new Uint8Array(buffer);
+              let binary = "";
+              bytes.forEach((b) => (binary += String.fromCharCode(b)));
+              const base64 = btoa(binary);
+
+              const res = await fetch("/api/upload-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  clientName: selectedClient,
+                  base64,
+                  filename: m.file!.name,
+                  mediaType: type === "VA" ? "video" : "image",
+                }),
+              });
+
+              const uploadResult = await res.json();
+              if (!res.ok) {
+                throw new Error(uploadResult.error || "이미지 업로드 실패");
+              }
+
+              return {
+                slot: m.label,
+                ratio: m.ratio,
+                hash: uploadResult.hash,
+                videoId: uploadResult.videoId,
+              };
+            })
+          );
+
+          return {
             name: c.name,
             body: c.body,
             title: c.title,
             musicIds: c.musicIds,
-            media: await Promise.all(
-              c.media.map(async (m) => {
-                const buffer = await m.file!.arrayBuffer();
-                const bytes = new Uint8Array(buffer);
-                let binary = "";
-                bytes.forEach((b) => (binary += String.fromCharCode(b)));
-                const base64 = btoa(binary);
-                return {
-                  slot: m.label,
-                  ratio: m.ratio,
-                  base64,
-                  filename: m.file!.name,
-                  mimeType: m.file!.type,
-                };
-              })
-            ),
-          }))
+            media,
+          };
+        })
       );
 
-      // 선택된 광고세트 정보 (omnichannel 여부 포함)
+      // Phase 2: 해시로 크리에이티브 + 광고 생성
       const selectedAdsets = adsets
         .filter((a) => selectedAdsetIds.includes(a.id))
         .map((a) => ({ id: a.id, name: a.name, isOmnichannel: a.isOmnichannel }));
@@ -595,12 +617,16 @@ export default function UploadPage() {
         }),
       });
 
-      const result = await response.json();
-
+      const resultText = await response.text();
       if (!response.ok) {
-        throw new Error(result.error || "업로드 실패");
+        let errorMsg = `HTTP ${response.status}`;
+        try {
+          errorMsg = JSON.parse(resultText).error || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
       }
 
+      const result = JSON.parse(resultText);
       alert(`${result.message}\n\n사용된 광고세트: ${result.adsetsUsed?.join(", ")}`);
 
       // Reset form on success
