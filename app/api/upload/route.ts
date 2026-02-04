@@ -36,21 +36,27 @@ interface UploadRequest {
 }
 
 
-// Slot to placement mapping
-// Facebook positions: feed, story, marketplace, video_feeds, search, instream_video, right_hand_column
-// Instagram positions: stream (피드), story, explore, explore_home, reels, shop, ig_search, profile_feed
-const SLOT_PLACEMENTS: Record<string, string[]> = {
-  "피드 이미지": ["facebook_feed", "instagram_stream"],
-  "스토리 이미지": ["facebook_story", "instagram_story"],
-  "릴스 이미지": ["instagram_reels", "facebook_reels"],
-  "기본 이미지": ["instagram_explore", "instagram_explore_home", "facebook_marketplace"],
-  // VA slots
-  "기본 영상": ["facebook_feed", "instagram_stream"],
-  "스토리/릴스 영상": ["facebook_story", "instagram_story", "instagram_reels", "facebook_reels"],
-  "피드 영상": ["facebook_feed", "instagram_stream"],
-};
+// Landing & UTM constants (AI코딩밸리)
+const LANDING_BASE = "https://www.codingvalley.com/ldm/7";
+const DISPLAY_URL = "https://www.codingvalley.com";
+const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
 
-// Create Ad Creative with asset_feed_spec for multi-image support
+function generateUtmUrl(creativeName: string, adsetName: string): string {
+  const now = new Date();
+  const Y = now.getFullYear().toString();
+  const M = (now.getMonth() + 1).toString().padStart(2, "0");
+  const D = now.getDate().toString().padStart(2, "0");
+  const YY = Y.slice(2);
+  const params = new URLSearchParams();
+  params.set("utm_source", "meta");
+  params.set("utm_medium", "cpc");
+  params.set("utm_id", `${Y}${M}${D}001`);
+  params.set("utm_campaign", `fbig_web_cretest_${YY}${M}${D}`);
+  params.set("utm_content", `${adsetName}__${creativeName}`);
+  return `${LANDING_BASE}?${params.toString()}`;
+}
+
+// Create Ad Creative — DA uses asset_feed_spec (multi-image, placement optimized), VA uses object_story_spec
 async function createAdCreative(
   adAccountId: string,
   accessToken: string,
@@ -58,15 +64,15 @@ async function createAdCreative(
   mediaAssets: { hash?: string; videoId?: string; slot: string }[],
   config: ClientConfig,
   isVideo: boolean,
-  isOmnichannel: boolean = false
+  adsetName: string
 ): Promise<string> {
   const url = `${GRAPH_API_BASE}/${adAccountId}/adcreatives`;
-  const link = config.landing_url || "https://example.com";
+  const websiteUrl = generateUtmUrl(creative.name, adsetName);
 
   let creativeData: Record<string, unknown>;
 
   if (isVideo) {
-    // Video: 단일 영상 사용 (asset_feed_spec은 이미지에 더 적합)
+    // VA: 단일 영상 + object_story_spec
     const objectStorySpec: Record<string, unknown> = {
       page_id: config.page_id,
       video_data: {
@@ -75,13 +81,13 @@ async function createAdCreative(
         title: creative.title,
         call_to_action: {
           type: "LEARN_MORE",
-          value: { link },
+          value: { link: websiteUrl },
         },
       },
     };
 
     if (config.instagram_actor_id) {
-      objectStorySpec.instagram_actor_id = config.instagram_actor_id;
+      objectStorySpec.instagram_user_id = config.instagram_actor_id;
     }
 
     creativeData = {
@@ -90,39 +96,43 @@ async function createAdCreative(
       object_story_spec: objectStorySpec,
     };
   } else {
-    // Image: link_data 방식 (첫 번째 이미지 사용)
-    const firstImage = mediaAssets.find((m) => m.hash);
-    if (!firstImage?.hash) {
-      throw new Error("No image hash available");
+    // DA: asset_feed_spec — 4장 이미지를 비율별로 배치 최적화
+    const images = mediaAssets
+      .filter((m) => m.hash)
+      .map((m) => ({ image_hash: m.hash }));
+
+    if (images.length === 0) {
+      throw new Error("No image hashes available");
     }
 
     const objectStorySpec: Record<string, unknown> = {
       page_id: config.page_id,
-      link_data: {
-        image_hash: firstImage.hash,
-        link,
-        message: creative.body,
-        name: creative.title,
-        call_to_action: { type: "LEARN_MORE" },
-      },
     };
 
-    // TODO: instagram_actor_id 지원 - 현재 Meta API 호환성 이슈로 비활성화
-    // Instagram 노출은 광고세트 타겟팅으로 처리됨
-    // if (config.instagram_actor_id) {
-    //   objectStorySpec.instagram_actor_id = config.instagram_actor_id;
-    // }
+    if (config.instagram_actor_id) {
+      objectStorySpec.instagram_user_id = config.instagram_actor_id;
+    }
 
     creativeData = {
       access_token: accessToken,
       name: creative.name,
       object_story_spec: objectStorySpec,
+      asset_feed_spec: {
+        images,
+        bodies: [{ text: creative.body }],
+        titles: [{ text: creative.title }],
+        descriptions: [{ text: DEFAULT_DESCRIPTION }],
+        link_urls: [
+          {
+            website_url: websiteUrl,
+            display_url: DISPLAY_URL,
+          },
+        ],
+        call_to_action_types: ["LEARN_MORE"],
+        ad_formats: ["AUTOMATIC_FORMAT"],
+        optimization_type: "PLACEMENT",
+      },
     };
-
-    // 옴니채널 광고세트용 object_store_url 추가
-    if (isOmnichannel) {
-      creativeData.object_store_url = link;
-    }
   }
 
   const response = await fetch(url, {
@@ -296,36 +306,34 @@ export async function POST(request: NextRequest) {
       );
 
       const adIds: string[] = [];
-      let creativeId = "";
+      let lastCreativeId = "";
 
-      // Create creative for regular adsets
-      if (regularAdsets.length > 0) {
-        creativeId = await createAdCreative(
+      // 각 광고세트마다 개별 creative 생성 (adset별 UTM 추적)
+      for (const adset of regularAdsets) {
+        const creativeId = await createAdCreative(
           config.ad_account_id,
           config.access_token,
           creative,
           mediaAssets,
           config,
           isVideo,
-          false
+          adset.name
         );
+        lastCreativeId = creativeId;
 
-        // Create ads in regular adsets
-        for (const adset of regularAdsets) {
-          const adId = await createAd(
-            config.ad_account_id,
-            config.access_token,
-            adset.id,
-            creativeId,
-            creative.name
-          );
-          adIds.push(adId);
-        }
+        const adId = await createAd(
+          config.ad_account_id,
+          config.access_token,
+          adset.id,
+          creativeId,
+          creative.name
+        );
+        adIds.push(adId);
       }
 
       results.push({
         creativeName: creative.name,
-        creativeId,
+        creativeId: lastCreativeId,
         adIds,
       });
     }

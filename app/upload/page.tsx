@@ -49,7 +49,7 @@ function createEmptyCreative(type: CreativeType): Creative {
     id: crypto.randomUUID(),
     name: "",
     body: "",
-    title: "",
+    title: "🔥 지금 무료체험 + 74% 할인!",
     media: slots.map((s) => ({ label: s.label, ratio: s.ratio, file: null, preview: null })),
     musicIds: [...DEFAULT_MUSIC_IDS], // 기본 5개 음악 모두 선택
   };
