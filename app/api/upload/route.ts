@@ -72,12 +72,14 @@ async function uploadImage(
     throw new Error(`Image upload failed: ${result.error.message}`);
   }
 
-  // Response format: { images: { [filename]: { hash, url } } }
-  const imageData = result.images?.[filename];
-  if (!imageData) {
+  // Response format: { images: { [key]: { hash, url } } }
+  const images = result.images;
+  if (!images) {
     throw new Error("No image data in response");
   }
 
+  // Get first image from response (key can be 'bytes' or filename)
+  const imageData = Object.values(images)[0] as { hash: string; url: string };
   return { hash: imageData.hash, url: imageData.url };
 }
 
@@ -110,7 +112,7 @@ async function uploadVideo(
   return result.id;
 }
 
-// Create Ad Creative with asset feed spec
+// Create Ad Creative (simplified - uses first media asset)
 async function createAdCreative(
   adAccountId: string,
   accessToken: string,
@@ -121,57 +123,45 @@ async function createAdCreative(
 ): Promise<string> {
   const url = `${GRAPH_API_BASE}/${adAccountId}/adcreatives`;
 
-  // Build asset feed spec for different placements
-  const images = isVideo ? undefined : mediaAssets.map((asset) => ({
-    hash: asset.hash,
-  }));
+  const link = config.landing_url || "https://example.com";
 
-  const videos = isVideo ? mediaAssets.map((asset) => ({
-    video_id: asset.videoId,
-  })) : undefined;
+  // Build object_story_spec based on media type
+  let objectStorySpec;
 
-  // Build bodies and titles
-  const bodies = [{ text: creative.body }];
-  const titles = [{ text: creative.title }];
-
-  // Call to action
-  const callToActions = [{
-    type: "LEARN_MORE",
-    value: {
-      link: config.landing_url || "https://example.com",
-    },
-  }];
-
-  const assetFeedSpec: Record<string, unknown> = {
-    bodies,
-    titles,
-    call_to_actions: callToActions,
-    ad_formats: ["SINGLE_IMAGE"],
-    ...(images && { images }),
-    ...(videos && { videos }),
-  };
-
-  // Add music for VA
-  if (isVideo && creative.music) {
-    assetFeedSpec.audios = [{ audio_id: creative.music }];
+  if (isVideo) {
+    // Video ad
+    objectStorySpec = {
+      page_id: config.page_id,
+      instagram_actor_id: config.instagram_actor_id,
+      video_data: {
+        video_id: mediaAssets[0]?.videoId,
+        message: creative.body,
+        title: creative.title,
+        call_to_action: {
+          type: "LEARN_MORE",
+          value: { link },
+        },
+      },
+    };
+  } else {
+    // Image ad
+    objectStorySpec = {
+      page_id: config.page_id,
+      instagram_actor_id: config.instagram_actor_id,
+      link_data: {
+        link,
+        message: creative.body,
+        name: creative.title,
+        image_hash: mediaAssets[0]?.hash,
+        call_to_action: { type: "LEARN_MORE" },
+      },
+    };
   }
 
   const creativeData = {
     access_token: accessToken,
     name: creative.name,
-    object_story_spec: {
-      page_id: config.page_id || "",
-      instagram_actor_id: config.instagram_actor_id,
-      link_data: {
-        link: config.landing_url || "https://example.com",
-        message: creative.body,
-        name: creative.title,
-        call_to_action: { type: "LEARN_MORE" },
-        ...(images && { image_hash: mediaAssets[0]?.hash }),
-        ...(videos && { video_id: mediaAssets[0]?.videoId }),
-      },
-    },
-    asset_feed_spec: assetFeedSpec,
+    object_story_spec: objectStorySpec,
     degrees_of_freedom_spec: {
       creative_features_spec: {
         standard_enhancements: { enroll_status: "OPT_OUT" },
