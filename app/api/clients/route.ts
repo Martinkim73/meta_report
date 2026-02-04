@@ -1,34 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
-
-const clientsPath = path.join(process.cwd(), "clients.json");
-
-async function readClients(): Promise<Record<string, unknown>> {
-  try {
-    const data = await fs.readFile(clientsPath, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return {};
-  }
-}
-
-async function writeClients(clients: Record<string, unknown>): Promise<void> {
-  await fs.writeFile(clientsPath, JSON.stringify(clients, null, 2), "utf-8");
-}
+import { getClients, addClient, deleteClient, ClientConfig } from "@/lib/redis";
 
 export async function GET() {
   try {
-    const clients = await readClients();
-    // Return client names and basic info (not tokens)
+    const clients = await getClients();
     const clientList = Object.entries(clients).map(([name, config]) => ({
       name,
-      adAccountId: (config as Record<string, unknown>).ad_account_id,
-      targetCampaigns: (config as Record<string, unknown>).target_campaigns,
+      adAccountId: config.ad_account_id,
+      targetCampaigns: config.target_campaigns,
     }));
 
     return NextResponse.json({ clients: clientList });
-  } catch {
+  } catch (error) {
+    console.error("Error fetching clients:", error);
     return NextResponse.json({ clients: [] });
   }
 }
@@ -47,7 +31,6 @@ export async function POST(request: NextRequest) {
       discordWebhook,
       pageId,
       instagramActorId,
-      landingUrl,
     } = body;
 
     if (!name || !accessToken || !adAccountId) {
@@ -57,10 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const clients = await readClients();
-
-    // Add new client
-    clients[name] = {
+    const config: ClientConfig = {
       access_token: accessToken,
       ad_account_id: adAccountId,
       target_campaigns: targetCampaigns
@@ -72,10 +52,10 @@ export async function POST(request: NextRequest) {
       discord_webhook: discordWebhook || "",
       page_id: pageId || "",
       instagram_actor_id: instagramActorId || "",
-      landing_url: landingUrl || "",
+      landing_url: "",
     };
 
-    await writeClients(clients);
+    await addClient(name, config);
 
     return NextResponse.json({ success: true, message: `${name} 광고주가 추가되었습니다` });
   } catch (error) {
@@ -99,17 +79,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const clients = await readClients();
+    const deleted = await deleteClient(name);
 
-    if (!clients[name]) {
+    if (!deleted) {
       return NextResponse.json(
         { error: "존재하지 않는 광고주입니다" },
         { status: 404 }
       );
     }
-
-    delete clients[name];
-    await writeClients(clients);
 
     return NextResponse.json({ success: true, message: `${name} 광고주가 삭제되었습니다` });
   } catch (error) {

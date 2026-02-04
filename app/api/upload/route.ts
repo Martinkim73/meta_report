@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
+import { getClient, ClientConfig } from "@/lib/redis";
 
 // Note: For App Router, body size is configured in next.config.js
 // experimental.serverActions.bodySizeLimit or using streaming
 
 const GRAPH_API_VERSION = "v22.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
-
-interface ClientConfig {
-  access_token: string;
-  ad_account_id: string;
-  target_campaigns: string[];
-  landing_url?: string;
-  page_id?: string;
-  instagram_actor_id?: string;
-}
 
 interface MediaUpload {
   slot: string;
@@ -47,16 +37,6 @@ interface UploadRequest {
   creatives: CreativePayload[];
 }
 
-async function getClientConfig(clientName: string): Promise<ClientConfig | null> {
-  try {
-    const clientsPath = path.join(process.cwd(), "clients.json");
-    const data = await fs.readFile(clientsPath, "utf-8");
-    const clients = JSON.parse(data);
-    return clients[clientName] || null;
-  } catch {
-    return null;
-  }
-}
 
 // Upload image to Meta and get image hash
 async function uploadImage(
@@ -314,7 +294,7 @@ export async function POST(request: NextRequest) {
     const { type, clientName, adsetIds, adsets: adsetInfos, creatives } = body;
 
     // Get client config
-    const config = await getClientConfig(clientName);
+    const config = await getClient(clientName);
     if (!config) {
       return NextResponse.json(
         { error: `Client "${clientName}" not found` },

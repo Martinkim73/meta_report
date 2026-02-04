@@ -17,6 +17,7 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^25.2.0",
     "@types/react": "^19.2.10",
+    "@upstash/redis": "^1.36.2",
     "autoprefixer": "^10.4.24",
     "next": "^16.1.6",
     "postcss": "^8.5.6",

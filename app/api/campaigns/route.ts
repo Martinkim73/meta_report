@@ -1,25 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
+import { getClient } from "@/lib/redis";
 
 const GRAPH_API_VERSION = "v22.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
-
-interface ClientConfig {
-  access_token: string;
-  ad_account_id: string;
-}
-
-async function getClientConfig(clientName: string): Promise<ClientConfig | null> {
-  try {
-    const clientsPath = path.join(process.cwd(), "clients.json");
-    const data = await fs.readFile(clientsPath, "utf-8");
-    const clients = JSON.parse(data);
-    return clients[clientName] || null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: NextRequest) {
   const clientName = request.nextUrl.searchParams.get("client");
@@ -28,7 +11,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Client name required" }, { status: 400 });
   }
 
-  const config = await getClientConfig(clientName);
+  const config = await getClient(clientName);
   if (!config) {
     return NextResponse.json({ error: "Client not found" }, { status: 404 });
   }
