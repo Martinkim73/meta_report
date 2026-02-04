@@ -757,7 +757,10 @@ export default function UploadPage() {
                       {a.name}
                       {a.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
                     </span>
-                    {a.warning && (
+                    {a.isOmnichannel && (
+                      <span className="text-xs text-orange-500" title="Omnichannel 세트는 DPA만 호환 — 수동 소재 업로드 불가">⚠️OMNI</span>
+                    )}
+                    {a.warning && !a.isOmnichannel && (
                       <span className="text-xs text-orange-500" title={a.warning}>⚠️</span>
                     )}
                   </label>

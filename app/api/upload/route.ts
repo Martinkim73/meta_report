@@ -284,9 +284,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Separate omnichannel and regular adsets
+    // Omnichannel 세트는 DPA(동적제품광고)만 호환 — 수동 소재 업로드 불가, 자동 제외
+    const skippedOmni = targetAdsets.filter((a) => a.isOmnichannel).map((a) => a.name);
     const regularAdsets = targetAdsets.filter((a) => !a.isOmnichannel);
-    const omnichannelAdsets = targetAdsets.filter((a) => a.isOmnichannel);
 
     // Process each creative
     for (const creative of creatives) {
@@ -297,7 +297,6 @@ export async function POST(request: NextRequest) {
 
       const adIds: string[] = [];
       let creativeId = "";
-      let omnichannelCreativeId = "";
 
       // Create creative for regular adsets
       if (regularAdsets.length > 0) {
@@ -324,35 +323,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create separate creative for omnichannel adsets (needs object_store_url)
-      if (omnichannelAdsets.length > 0) {
-        omnichannelCreativeId = await createAdCreative(
-          config.ad_account_id,
-          config.access_token,
-          { ...creative, name: `${creative.name}_omni` },
-          mediaAssets,
-          config,
-          isVideo,
-          true
-        );
-
-        // Create ads in omnichannel adsets
-        for (const adset of omnichannelAdsets) {
-          const adId = await createAd(
-            config.ad_account_id,
-            config.access_token,
-            adset.id,
-            omnichannelCreativeId,
-            `${creative.name}_${adset.name}`
-          );
-          adIds.push(adId);
-        }
-      }
-
       results.push({
         creativeName: creative.name,
-        creativeId: creativeId || omnichannelCreativeId,
-        ...(omnichannelCreativeId && { omnichannelCreativeId }),
+        creativeId,
         adIds,
       });
     }
@@ -361,7 +334,10 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `${results.length}개 소재가 등록되었습니다`,
       results,
-      adsetsUsed: targetAdsets.map((a) => a.name),
+      adsetsUsed: regularAdsets.map((a) => a.name),
+      ...(skippedOmni.length > 0 && {
+        warning: `Omnichannel 세트는 DPA만 호환되어 자동 제외됨: ${skippedOmni.join(", ")}`,
+      }),
     });
   } catch (error) {
     console.error("Upload error:", error);
