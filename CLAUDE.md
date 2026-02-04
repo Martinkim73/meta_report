@@ -5,6 +5,22 @@
 - Branch: main
 - 작업 완료 후 항상 commit + push origin main 수행할 것
 
+## 빠른 시작 (새 환경에서)
+```bash
+# 1. 프로젝트 클론 (OneDrive 바깥 경로 권장)
+git clone https://github.com/Martinkim73/meta_report.git
+cd meta_report
+
+# 2. 의존성 설치
+npm install
+
+# 3. clients.json 설정 (광고주 정보 - gitignore됨)
+# 아래 "clients.json 설정" 섹션 참고
+
+# 4. 개발 서버 시작
+npm run dev
+```
+
 ## 자동 저장 규칙
 - **토큰 사용량 90% 도달 시**: 자동으로 git commit + push 수행
 - 현재 작업 상태를 CLAUDE.md "현재 상태" 섹션에 업데이트
@@ -74,60 +90,70 @@ META_AD_ACCOUNT_ID=act_xxxx
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
-## 현재 상태 (2026.02.03)
+## clients.json 설정
+프로젝트 루트에 `clients.json` 파일 생성 (gitignore됨):
+```json
+{
+  "광고주이름": {
+    "access_token": "Meta API 액세스 토큰",
+    "ad_account_id": "act_계정ID",
+    "target_campaigns": ["캠페인명1", "캠페인명2"],
+    "page_id": "페이스북 페이지 ID",
+    "instagram_actor_id": "인스타그램 계정 ID (선택)",
+    "landing_url": "랜딩 페이지 URL",
+    "discord_webhook": "디스코드 웹훅 URL"
+  }
+}
+```
+
+## 현재 상태 (2026.02.04)
 
 ### ✅ 완료된 작업
 - **Streamlit → Next.js 마이그레이션 완료**
 - Next.js 15 + TypeScript + Tailwind CSS 설정
 - 토스 스타일 UI 구현
-- 모든 페이지 구현 (홈, 광고주 관리, 분석 결과)
-- 사이드바 메뉴 + 상세 설명
-- 모든 입력 필드에 설명 추가
-- 용어 설명 (ROAS, CPA, DA/VA)
-- **GitHub 저장 완료** (commit: 96be941)
+- 모든 페이지 구현 (홈, 광고주 관리, 분석 결과, 업로드)
+- **광고 소재 업로드 기능 완료** (app/api/upload/route.ts)
+  - 이미지 업로드 → 크리에이티브 생성 → 광고 생성
+  - DA(이미지) / VA(영상) 지원
+  - Omnichannel adset 지원
+  - 캠페인/광고세트 선택 기능
 
 ### 🖥️ 로컬 개발 환경
-- 서버 실행 중: http://localhost:3001
-- 프로젝트 위치: C:\Users\PC\OneDrive\Desktop\meta_report
+- 서버: `npm run dev` → http://localhost:3000
+- 프로젝트 권장 위치: `C:\Projects\meta_report` (OneDrive 바깥)
+- ⚠️ OneDrive 폴더에서 실행 시 .next 캐시 동기화 문제 발생 가능
 
 ### 🚧 구현 예정 (우선순위)
-1. **Meta API 연동** (lib/meta-api.ts)
-   - Facebook Business SDK 설치
-   - 광고 데이터 조회 로직 포팅
-   - Python → TypeScript 변환
-
-2. **분석 엔진** (app/api/analyze/route.ts)
+1. **분석 엔진** (app/api/analyze/route.ts)
    - 저효율 광고 탐지 로직
    - DA/VA 소재 분류
    - 예산 규칙 점검
 
-3. **Discord 연동** (lib/discord.ts)
+2. **Discord 연동** (lib/discord.ts)
    - 웹훅 전송 기능
    - 리포트 포맷팅
 
-4. **데이터 저장**
-   - 광고주 정보 저장 (로컬스토리지 또는 DB)
-   - 분석 결과 캐싱
-
-5. **Vercel 배포**
+3. **Vercel 배포**
    - 환경변수 설정
    - 자동 배포 설정
 
-### 📝 마이그레이션 이력
+4. **Instagram actor ID 지원** (현재 비활성화)
+   - Meta API 호환성 이슈 해결 필요
+
+### 📝 변경 이력
+**2026.02.04**
+- 광고 업로드 API 완성 (이미지/영상 → 크리에이티브 → 광고)
+- Omnichannel adset 지원 추가
+- 프로젝트 OneDrive → C:\Projects로 이동 (동기화 문제 해결)
+
 **2026.02.03 - Streamlit → Next.js**
-- **이유**: UI 수정이 어렵고, 설명 추가가 복잡함
-- **변경사항**:
-  - Streamlit Cloud → Vercel
-  - Python → TypeScript
-  - 코드와 컨텐츠 분리
-  - 더 유연한 커스터마이징
-- **기존 배포**: https://metareport-auhbmmwl5ryy4chf93n9ii.streamlit.app/ (종료 예정)
-- **새 배포**: Vercel (배포 예정)
+- Streamlit Cloud → Vercel로 마이그레이션
+- Python → TypeScript 전환
 
 ### 다음 작업
-- [ ] Meta API 연동 (TypeScript)
 - [ ] 분석 엔진 구현
 - [ ] Discord 연동
 - [ ] Vercel 배포
-- [ ] 광고 소재 자동 업로드 기능
 - [ ] AI 광고 문구 자동 생성
+- [ ] Instagram actor ID 호환성 수정
