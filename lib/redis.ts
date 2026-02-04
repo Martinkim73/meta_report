@@ -1,11 +1,24 @@
 import { Redis } from "@upstash/redis";
 
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
 const CLIENTS_KEY = "clients";
+
+// Lazy initialization to avoid errors when env vars are missing
+let redisInstance: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    console.error("Redis environment variables not configured");
+    return null;
+  }
+
+  if (!redisInstance) {
+    redisInstance = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redisInstance;
+}
 
 export interface ClientConfig {
   access_token: string;
@@ -21,11 +34,22 @@ export interface ClientConfig {
 }
 
 export async function getClients(): Promise<Record<string, ClientConfig>> {
-  const clients = await redis.get<Record<string, ClientConfig>>(CLIENTS_KEY);
-  return clients || {};
+  const redis = getRedis();
+  if (!redis) return {};
+
+  try {
+    const clients = await redis.get<Record<string, ClientConfig>>(CLIENTS_KEY);
+    return clients || {};
+  } catch (error) {
+    console.error("Redis getClients error:", error);
+    return {};
+  }
 }
 
 export async function saveClients(clients: Record<string, ClientConfig>): Promise<void> {
+  const redis = getRedis();
+  if (!redis) throw new Error("Redis not configured");
+
   await redis.set(CLIENTS_KEY, clients);
 }
 
