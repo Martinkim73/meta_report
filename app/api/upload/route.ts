@@ -317,7 +317,7 @@ export async function POST(request: NextRequest) {
             config.access_token,
             adset.id,
             creativeId,
-            `${creative.name}_${adset.name}`
+            creative.name
           );
           adIds.push(adId);
         }
