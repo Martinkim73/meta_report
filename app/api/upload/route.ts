@@ -33,6 +33,7 @@ interface CreativePayload {
 interface UploadRequest {
   type: "DA" | "VA";
   clientName: string;
+  adsetIds?: string[];
   creatives: CreativePayload[];
 }
 
@@ -69,7 +70,8 @@ async function uploadImage(
   const result = await response.json();
 
   if (result.error) {
-    throw new Error(`Image upload failed: ${result.error.message}`);
+    const errorDetail = result.error.error_user_msg || result.error.message;
+    throw new Error(`Image upload failed: ${errorDetail}`);
   }
 
   // Response format: { images: { [key]: { hash, url } } }
@@ -163,11 +165,6 @@ async function createAdCreative(
     access_token: accessToken,
     name: creative.name,
     object_story_spec: objectStorySpec,
-    degrees_of_freedom_spec: {
-      creative_features_spec: {
-        standard_enhancements: { enroll_status: "OPT_OUT" },
-      },
-    },
   };
 
   const response = await fetch(url, {
@@ -179,7 +176,8 @@ async function createAdCreative(
   const result = await response.json();
 
   if (result.error) {
-    throw new Error(`Creative creation failed: ${result.error.message}`);
+    const errorDetail = result.error.error_user_msg || result.error.message;
+    throw new Error(`Creative creation failed: ${errorDetail} (code: ${result.error.code}, subcode: ${result.error.error_subcode || 'none'})`);
   }
 
   return result.id;
@@ -213,13 +211,18 @@ async function getActiveAdsets(
   // Get adsets from these campaigns
   const adsets: { id: string; name: string }[] = [];
   for (const campaign of targetCampaigns) {
-    const adsetsUrl = `${GRAPH_API_BASE}/${campaign.id}/adsets?fields=id,name,status&access_token=${accessToken}`;
+    const adsetsUrl = `${GRAPH_API_BASE}/${campaign.id}/adsets?fields=id,name,status,destination_type,promoted_object&access_token=${accessToken}`;
     const adsetsRes = await fetch(adsetsUrl);
     const adsetsData = await adsetsRes.json();
 
     if (adsetsData.data) {
+      // Filter: ACTIVE, not APP destination, no omnichannel (cross-channel optimization requires object_store_url)
       adsets.push(
-        ...adsetsData.data.filter((a: { status: string }) => a.status === "ACTIVE")
+        ...adsetsData.data.filter((a: { status: string; destination_type: string; promoted_object?: { omnichannel_object?: unknown } }) =>
+          a.status === "ACTIVE" &&
+          a.destination_type !== "APP" &&
+          !a.promoted_object?.omnichannel_object
+        )
       );
     }
   }
@@ -244,7 +247,7 @@ async function createAd(
       access_token: accessToken,
       name,
       adset_id: adsetId,
-      creative: { creative_id: creativeId },
+      creative: JSON.stringify({ creative_id: creativeId }),
       status: "PAUSED", // Start paused for safety
     }),
   });
@@ -252,7 +255,8 @@ async function createAd(
   const result = await response.json();
 
   if (result.error) {
-    throw new Error(`Ad creation failed: ${result.error.message}`);
+    const errorDetail = result.error.error_user_msg || result.error.message;
+    throw new Error(`Ad creation failed: ${errorDetail} (code: ${result.error.code}, subcode: ${result.error.error_subcode || 'none'})`);
   }
 
   return result.id;
@@ -261,7 +265,7 @@ async function createAd(
 export async function POST(request: NextRequest) {
   try {
     const body: UploadRequest = await request.json();
-    const { type, clientName, creatives } = body;
+    const { type, clientName, adsetIds, creatives } = body;
 
     // Get client config
     const config = await getClientConfig(clientName);
@@ -279,16 +283,24 @@ export async function POST(request: NextRequest) {
       adIds: string[];
     }[] = [];
 
-    // Get active adsets to create ads in
-    const adsets = await getActiveAdsets(
-      config.ad_account_id,
-      config.access_token,
-      config.target_campaigns
-    );
+    // Use provided adsetIds or fall back to auto-detection
+    let adsets: { id: string; name: string }[];
+
+    if (adsetIds && adsetIds.length > 0) {
+      // Use manually selected adsets
+      adsets = adsetIds.map((id) => ({ id, name: id }));
+    } else {
+      // Fall back to auto-detection from target campaigns
+      adsets = await getActiveAdsets(
+        config.ad_account_id,
+        config.access_token,
+        config.target_campaigns
+      );
+    }
 
     if (adsets.length === 0) {
       return NextResponse.json(
-        { error: "No active adsets found in target campaigns" },
+        { error: "광고세트를 선택해주세요" },
         { status: 400 }
       );
     }

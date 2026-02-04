@@ -407,6 +407,20 @@ function CreativeCard({
   );
 }
 
+interface Campaign {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface Adset {
+  id: string;
+  name: string;
+  status: string;
+  compatible: boolean;
+  warning: string | null;
+}
+
 export default function UploadPage() {
   const [type, setType] = useState<CreativeType>("DA");
   const [creatives, setCreatives] = useState<Creative[]>([
@@ -417,6 +431,15 @@ export default function UploadPage() {
   const [clients, setClients] = useState<string[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>("");
 
+  // Campaign & Adset selection
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
+  const [adsets, setAdsets] = useState<Adset[]>([]);
+  const [selectedAdsetIds, setSelectedAdsetIds] = useState<string[]>([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [loadingAdsets, setLoadingAdsets] = useState(false);
+
+  // Load clients
   useEffect(() => {
     fetch("/api/clients")
       .then((res) => res.json())
@@ -428,6 +451,59 @@ export default function UploadPage() {
       })
       .catch(() => setClients([]));
   }, []);
+
+  // Load campaigns when client changes
+  useEffect(() => {
+    if (!selectedClient) return;
+    setLoadingCampaigns(true);
+    setCampaigns([]);
+    setSelectedCampaignIds([]);
+    setAdsets([]);
+    setSelectedAdsetIds([]);
+
+    fetch(`/api/campaigns?client=${encodeURIComponent(selectedClient)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setCampaigns(data.campaigns || []);
+      })
+      .catch(() => setCampaigns([]))
+      .finally(() => setLoadingCampaigns(false));
+  }, [selectedClient]);
+
+  // Load adsets when campaigns change
+  useEffect(() => {
+    if (!selectedClient || selectedCampaignIds.length === 0) {
+      setAdsets([]);
+      setSelectedAdsetIds([]);
+      return;
+    }
+    setLoadingAdsets(true);
+
+    // Fetch adsets from all selected campaigns
+    Promise.all(
+      selectedCampaignIds.map((campaignId) =>
+        fetch(`/api/adsets?client=${encodeURIComponent(selectedClient)}&campaign_id=${campaignId}`)
+          .then((res) => res.json())
+          .then((data) => data.adsets || [])
+      )
+    )
+      .then((results) => {
+        // Flatten and dedupe adsets from all campaigns
+        const allAdsets = results.flat();
+        const uniqueAdsets = allAdsets.filter(
+          (a: Adset, index: number, self: Adset[]) =>
+            index === self.findIndex((b) => b.id === a.id)
+        );
+        setAdsets(uniqueAdsets);
+        // Auto-select compatible and active adsets
+        const compatibleActive = uniqueAdsets
+          .filter((a: Adset) => a.compatible && a.status === "ACTIVE")
+          .map((a: Adset) => a.id);
+        setSelectedAdsetIds(compatibleActive);
+      })
+      .catch(() => setAdsets([]))
+      .finally(() => setLoadingAdsets(false));
+  }, [selectedClient, selectedCampaignIds]);
 
   const handleTypeChange = (newType: CreativeType) => {
     if (newType === type) return;
@@ -506,6 +582,7 @@ export default function UploadPage() {
         body: JSON.stringify({
           type,
           clientName: selectedClient,
+          adsetIds: selectedAdsetIds,
           creatives: creativesPayload,
         }),
       });
@@ -555,6 +632,89 @@ export default function UploadPage() {
         <p className="text-xs text-muted mt-1">
           소재를 등록할 광고주를 선택하세요
         </p>
+      </div>
+
+      {/* Campaign & Adset selector */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Campaign selector - multi-select */}
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            캠페인 선택 ({selectedCampaignIds.length}개)
+          </label>
+          <div className="toss-input h-auto max-h-40 overflow-y-auto p-2">
+            {loadingCampaigns ? (
+              <p className="text-sm text-muted">캠페인 불러오는 중...</p>
+            ) : campaigns.length === 0 ? (
+              <p className="text-sm text-muted">캠페인이 없습니다</p>
+            ) : (
+              campaigns.map((c) => (
+                <label
+                  key={c.id}
+                  className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCampaignIds.includes(c.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedCampaignIds([...selectedCampaignIds, c.id]);
+                      } else {
+                        setSelectedCampaignIds(selectedCampaignIds.filter((id) => id !== c.id));
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm flex-1">
+                    {c.name}
+                    {c.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Adset selector */}
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            광고세트 선택 ({selectedAdsetIds.length}개)
+          </label>
+          <div className="toss-input h-auto max-h-40 overflow-y-auto p-2">
+            {loadingAdsets ? (
+              <p className="text-sm text-muted">광고세트 불러오는 중...</p>
+            ) : adsets.length === 0 ? (
+              <p className="text-sm text-muted">캠페인을 먼저 선택하세요</p>
+            ) : (
+              adsets.map((a) => (
+                <label
+                  key={a.id}
+                  className={`flex items-center gap-2 py-1 cursor-pointer ${!a.compatible ? "opacity-50" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAdsetIds.includes(a.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAdsetIds([...selectedAdsetIds, a.id]);
+                      } else {
+                        setSelectedAdsetIds(selectedAdsetIds.filter((id) => id !== a.id));
+                      }
+                    }}
+                    disabled={!a.compatible}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm flex-1">
+                    {a.name}
+                    {a.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
+                  </span>
+                  {a.warning && (
+                    <span className="text-xs text-orange-500" title={a.warning}>⚠️</span>
+                  )}
+                </label>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Type selector */}
