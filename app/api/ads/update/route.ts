@@ -1,0 +1,294 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getClient, ClientConfig } from "@/lib/redis";
+
+export const runtime = "nodejs";
+
+const GRAPH_API_VERSION = "v22.0";
+const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
+
+// AI코딩밸리 Instagram 계정 ID
+const AI_CODINGVALLEY_INSTAGRAM_ID = "17841459147478114";
+
+// 기본값
+const DEFAULT_LANDING_URL = "https://www.codingvalley.com/ldm/7";
+const DEFAULT_DISPLAY_URL = "codingvalley.com";
+const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
+
+interface MediaUpload {
+  slot: string;
+  ratio: string;
+  hash?: string;
+  videoId?: string;
+}
+
+interface UpdateRequest {
+  clientName: string;
+  adIds: string[];  // 수정할 광고 ID들
+  media: MediaUpload[];  // 새 이미지/영상
+  // 선택적 텍스트 수정
+  body?: string;
+  title?: string;
+  landingUrl?: string;
+  displayUrl?: string;
+  description?: string;
+}
+
+function generateUtmUrl(creativeName: string, adsetName: string, landingUrl: string): string {
+  const now = new Date();
+  const Y = now.getFullYear().toString();
+  const M = (now.getMonth() + 1).toString().padStart(2, "0");
+  const D = now.getDate().toString().padStart(2, "0");
+  const YY = Y.slice(2);
+  const params = new URLSearchParams();
+  params.set("utm_source", "meta");
+  params.set("utm_medium", "cpc");
+  params.set("utm_id", `${Y}${M}${D}001`);
+  params.set("utm_campaign", `fbig_web_cretest_${YY}${M}${D}`);
+  params.set("utm_content", `${adsetName}__${creativeName}`);
+  return `${landingUrl}?${params.toString()}`;
+}
+
+// 기존 광고에서 정보 가져오기
+async function getAdInfo(accessToken: string, adId: string): Promise<{
+  name: string;
+  adsetId: string;
+  adsetName: string;
+  creative: {
+    body?: string;
+    title?: string;
+  };
+} | null> {
+  try {
+    const res = await fetch(
+      `${GRAPH_API_BASE}/${adId}?fields=name,adset_id,creative{object_story_spec,asset_feed_spec}&access_token=${accessToken}`
+    );
+    const data = await res.json();
+    if (data.error) return null;
+
+    // 광고세트 이름 조회
+    const adsetRes = await fetch(
+      `${GRAPH_API_BASE}/${data.adset_id}?fields=name&access_token=${accessToken}`
+    );
+    const adsetData = await adsetRes.json();
+
+    // 기존 크리에이티브에서 텍스트 추출
+    let body = "";
+    let title = "";
+    const creative = data.creative;
+    if (creative?.asset_feed_spec) {
+      body = creative.asset_feed_spec.bodies?.[0]?.text || "";
+      title = creative.asset_feed_spec.titles?.[0]?.text || "";
+    } else if (creative?.object_story_spec?.link_data) {
+      body = creative.object_story_spec.link_data.message || "";
+      title = creative.object_story_spec.link_data.name || "";
+    }
+
+    return {
+      name: data.name,
+      adsetId: data.adset_id,
+      adsetName: adsetData.name || data.adset_id,
+      creative: { body, title },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// 새 크리에이티브 생성
+async function createNewCreative(
+  adAccountId: string,
+  accessToken: string,
+  name: string,
+  body: string,
+  title: string,
+  media: MediaUpload[],
+  config: ClientConfig,
+  adsetName: string,
+  landingUrl: string,
+  displayUrl: string,
+  description: string
+): Promise<string> {
+  const url = `${GRAPH_API_BASE}/${adAccountId}/adcreatives`;
+  const websiteUrl = generateUtmUrl(name, adsetName, landingUrl);
+
+  const images = media.filter((m) => m.hash).map((m) => ({ hash: m.hash }));
+
+  if (images.length === 0) {
+    throw new Error("No image hashes available");
+  }
+
+  const objectStorySpec: Record<string, unknown> = {
+    page_id: config.page_id,
+  };
+
+  if (config.instagram_actor_id) {
+    objectStorySpec.instagram_user_id = config.instagram_actor_id;
+  }
+
+  const creativeData = {
+    access_token: accessToken,
+    name: `${name}_updated_${Date.now()}`,
+    object_story_spec: objectStorySpec,
+    asset_feed_spec: {
+      images,
+      bodies: [{ text: body }],
+      titles: [{ text: title }],
+      descriptions: [{ text: description }],
+      link_urls: [
+        {
+          website_url: websiteUrl,
+          display_url: displayUrl,
+        },
+      ],
+      call_to_action_types: ["LEARN_MORE"],
+      ad_formats: ["AUTOMATIC_FORMAT"],
+      optimization_type: "PLACEMENT",
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(creativeData),
+  });
+
+  const result = await response.json();
+
+  if (result.error) {
+    const errorDetail = result.error.error_user_msg || result.error.message;
+    throw new Error(`Creative creation failed: ${errorDetail}`);
+  }
+
+  return result.id;
+}
+
+// 광고의 크리에이티브 업데이트
+async function updateAdCreative(
+  accessToken: string,
+  adId: string,
+  creativeId: string
+): Promise<boolean> {
+  const url = `${GRAPH_API_BASE}/${adId}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      access_token: accessToken,
+      creative: JSON.stringify({ creative_id: creativeId }),
+    }),
+  });
+
+  const result = await response.json();
+
+  if (result.error) {
+    throw new Error(`Ad update failed: ${result.error.message}`);
+  }
+
+  return result.success === true;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const arrayBuffer = await request.arrayBuffer();
+    const body: UpdateRequest = JSON.parse(Buffer.from(arrayBuffer).toString("utf-8"));
+    const { clientName, adIds, media } = body;
+
+    if (!adIds || adIds.length === 0) {
+      return NextResponse.json({ error: "수정할 광고를 선택해주세요" }, { status: 400 });
+    }
+
+    if (!media || media.length === 0) {
+      return NextResponse.json({ error: "새 이미지를 업로드해주세요" }, { status: 400 });
+    }
+
+    const config = await getClient(clientName);
+    if (!config) {
+      return NextResponse.json({ error: `Client "${clientName}" not found` }, { status: 404 });
+    }
+
+    // page_id 자동 조회
+    if (!config.page_id) {
+      const pagesRes = await fetch(
+        `${GRAPH_API_BASE}/me/accounts?fields=id,name&access_token=${config.access_token}`
+      );
+      const pagesData = await pagesRes.json();
+      if (pagesData.data && pagesData.data.length > 0) {
+        config.page_id = pagesData.data[0].id;
+      } else {
+        return NextResponse.json(
+          { error: "Facebook 페이지를 찾을 수 없습니다" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Instagram ID 자동 설정
+    if (clientName === "AI코딩밸리" && !config.instagram_actor_id) {
+      config.instagram_actor_id = AI_CODINGVALLEY_INSTAGRAM_ID;
+    }
+
+    const landingUrl = body.landingUrl || DEFAULT_LANDING_URL;
+    const displayUrl = body.displayUrl || DEFAULT_DISPLAY_URL;
+    const description = body.description || DEFAULT_DESCRIPTION;
+
+    const results: { adId: string; adName: string; success: boolean; error?: string }[] = [];
+
+    for (const adId of adIds) {
+      try {
+        // 기존 광고 정보 가져오기
+        const adInfo = await getAdInfo(config.access_token, adId);
+        if (!adInfo) {
+          results.push({ adId, adName: adId, success: false, error: "광고 정보를 가져올 수 없음" });
+          continue;
+        }
+
+        // 텍스트는 기존 값 유지 또는 새 값 사용
+        const finalBody = body.body || adInfo.creative.body || "";
+        const finalTitle = body.title || adInfo.creative.title || "";
+
+        // 새 크리에이티브 생성
+        const newCreativeId = await createNewCreative(
+          config.ad_account_id,
+          config.access_token,
+          adInfo.name,
+          finalBody,
+          finalTitle,
+          media,
+          config,
+          adInfo.adsetName,
+          landingUrl,
+          displayUrl,
+          description
+        );
+
+        // 광고 업데이트
+        await updateAdCreative(config.access_token, adId, newCreativeId);
+
+        results.push({ adId, adName: adInfo.name, success: true });
+      } catch (error) {
+        results.push({
+          adId,
+          adName: adId,
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.filter((r) => !r.success).length;
+
+    return NextResponse.json({
+      success: true,
+      message: `${successCount}개 광고 수정 완료${failCount > 0 ? `, ${failCount}개 실패` : ""}`,
+      results,
+    });
+  } catch (error) {
+    console.error("Update error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Update failed" },
+      { status: 500 }
+    );
+  }
+}
