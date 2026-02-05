@@ -48,6 +48,35 @@ function generateUtmUrl(creativeName: string, adsetName: string, landingUrl: str
   return `${landingUrl}?${params.toString()}`;
 }
 
+interface OmnichannelInfo {
+  ios: { app_id: string; store_url: string };
+  android: { app_id: string; store_url: string };
+}
+
+// adset의 promoted_object에서 omnichannel 앱 정보 추출
+function parseOmnichannelInfo(storeUrls: string[]): OmnichannelInfo | null {
+  let iosAppId = "", iosStoreUrl = "";
+  let androidAppId = "", androidStoreUrl = "";
+
+  for (const url of storeUrls) {
+    if (url.includes("itunes.apple.com") || url.includes("apps.apple.com")) {
+      iosStoreUrl = url.replace("http://", "https://").replace("itunes.apple.com", "apps.apple.com");
+      const match = url.match(/\/app\/id(\d+)/);
+      if (match) iosAppId = match[1];
+    } else if (url.includes("play.google.com")) {
+      androidStoreUrl = url.replace("http://", "https://");
+      const match = url.match(/id=([^&]+)/);
+      if (match) androidAppId = match[1];
+    }
+  }
+
+  if (!iosAppId || !androidAppId) return null;
+  return {
+    ios: { app_id: iosAppId, store_url: iosStoreUrl },
+    android: { app_id: androidAppId, store_url: androidStoreUrl },
+  };
+}
+
 // 기존 광고에서 정보 가져오기
 async function getAdInfo(accessToken: string, adId: string): Promise<{
   name: string;
@@ -57,6 +86,7 @@ async function getAdInfo(accessToken: string, adId: string): Promise<{
     body?: string;
     title?: string;
   };
+  omnichannel?: OmnichannelInfo;
 } | null> {
   try {
     const res = await fetch(
@@ -65,11 +95,18 @@ async function getAdInfo(accessToken: string, adId: string): Promise<{
     const data = await res.json();
     if (data.error) return null;
 
-    // 광고세트 이름 조회
+    // 광고세트 정보 + promoted_object 조회
     const adsetRes = await fetch(
-      `${GRAPH_API_BASE}/${data.adset_id}?fields=name&access_token=${accessToken}`
+      `${GRAPH_API_BASE}/${data.adset_id}?fields=name,promoted_object&access_token=${accessToken}`
     );
     const adsetData = await adsetRes.json();
+
+    // omnichannel 감지
+    let omnichannel: OmnichannelInfo | undefined;
+    const appInfo = adsetData.promoted_object?.omnichannel_object?.app?.[0];
+    if (appInfo?.object_store_urls) {
+      omnichannel = parseOmnichannelInfo(appInfo.object_store_urls) || undefined;
+    }
 
     // 기존 크리에이티브에서 텍스트 추출
     let body = "";
@@ -88,6 +125,7 @@ async function getAdInfo(accessToken: string, adId: string): Promise<{
       adsetId: data.adset_id,
       adsetName: adsetData.name || data.adset_id,
       creative: { body, title },
+      omnichannel,
     };
   } catch {
     return null;
@@ -106,7 +144,8 @@ async function createNewCreative(
   adsetName: string,
   landingUrl: string,
   displayUrl: string,
-  description: string
+  description: string,
+  omnichannel?: OmnichannelInfo
 ): Promise<string> {
   const url = `${GRAPH_API_BASE}/${adAccountId}/adcreatives`;
   const websiteUrl = generateUtmUrl(name, adsetName, landingUrl);
@@ -125,7 +164,7 @@ async function createNewCreative(
     objectStorySpec.instagram_user_id = config.instagram_actor_id;
   }
 
-  const creativeData = {
+  const creativeData: Record<string, unknown> = {
     access_token: accessToken,
     name: `${name}_updated_${Date.now()}`,
     object_story_spec: objectStorySpec,
@@ -145,6 +184,16 @@ async function createNewCreative(
       optimization_type: "PLACEMENT",
     },
   };
+
+  // Omnichannel adset: applink_treatment + omnichannel_link_spec 필수
+  if (omnichannel) {
+    creativeData.applink_treatment = "automatic";
+    creativeData.omnichannel_link_spec = {
+      web: { url: websiteUrl },
+      ios: omnichannel.ios,
+      android: omnichannel.android,
+    };
+  }
 
   const response = await fetch(url, {
     method: "POST",
@@ -259,7 +308,8 @@ export async function POST(request: NextRequest) {
           adInfo.adsetName,
           landingUrl,
           displayUrl,
-          description
+          description,
+          adInfo.omnichannel
         );
 
         // 광고 업데이트
