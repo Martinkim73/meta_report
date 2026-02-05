@@ -15,10 +15,15 @@ ENV/
 
 # API Keys & Secrets
 .env
+.env.local
 config.py
 secrets.json
 clients.json
 .streamlit/secrets.toml
+
+# Test images
+test_image/
+test image/
 
 # IDE
 .vscode/

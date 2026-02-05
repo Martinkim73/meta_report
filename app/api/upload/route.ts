@@ -29,6 +29,11 @@ interface AdsetInfo {
   applicationId?: string;
 }
 
+interface OmnichannelInfo {
+  ios: { app_id: string; store_url: string };
+  android: { app_id: string; store_url: string };
+}
+
 interface UploadRequest {
   type: "DA" | "VA";
   clientName: string;
@@ -44,7 +49,7 @@ interface UploadRequest {
 
 // Landing & UTM defaults (AI코딩밸리)
 const DEFAULT_LANDING_URL = "https://www.codingvalley.com/ldm/7";
-const DEFAULT_DISPLAY_URL = "codingvalley.com";
+const DEFAULT_DISPLAY_URL = "https://www.codingvalley.com";
 const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
 
 // AI코딩밸리 Instagram 계정 ID (ai_codingvalley)
@@ -94,6 +99,43 @@ function generateUtmUrl(creativeName: string, adsetName: string, landingUrl: str
   return `${landingUrl}?${params.toString()}`;
 }
 
+function parseOmnichannelInfo(storeUrls: string[]): OmnichannelInfo | null {
+  let iosAppId = "", iosStoreUrl = "";
+  let androidAppId = "", androidStoreUrl = "";
+
+  for (const url of storeUrls) {
+    if (url.includes("itunes.apple.com") || url.includes("apps.apple.com")) {
+      iosStoreUrl = url.replace("http://", "https://").replace("itunes.apple.com", "apps.apple.com");
+      const match = url.match(/\/app\/id(\d+)/);
+      if (match) iosAppId = match[1];
+    } else if (url.includes("play.google.com")) {
+      androidStoreUrl = url.replace("http://", "https://");
+      const match = url.match(/id=([^&]+)/);
+      if (match) androidAppId = match[1];
+    }
+  }
+
+  if (!iosAppId || !androidAppId) return null;
+  return {
+    ios: { app_id: iosAppId, store_url: iosStoreUrl },
+    android: { app_id: androidAppId, store_url: androidStoreUrl },
+  };
+}
+
+async function getOmnichannelInfo(accessToken: string, adsetId: string): Promise<OmnichannelInfo | null> {
+  try {
+    const res = await fetch(
+      `${GRAPH_API_BASE}/${adsetId}?fields=promoted_object&access_token=${accessToken}`
+    );
+    const data = await res.json();
+    const storeUrls = data.promoted_object?.omnichannel_object?.app?.[0]?.object_store_urls;
+    if (!storeUrls) return null;
+    return parseOmnichannelInfo(storeUrls);
+  } catch {
+    return null;
+  }
+}
+
 // Create Ad Creative — DA uses asset_feed_spec (multi-image, placement optimized), VA uses object_story_spec
 async function createAdCreative(
   adAccountId: string,
@@ -105,7 +147,8 @@ async function createAdCreative(
   adsetName: string,
   landingUrl: string,
   displayUrl: string,
-  description: string
+  description: string,
+  omnichannel?: OmnichannelInfo
 ): Promise<string> {
   const url = `${GRAPH_API_BASE}/${adAccountId}/adcreatives`;
   const websiteUrl = generateUtmUrl(creative.name, adsetName, landingUrl);
@@ -136,17 +179,6 @@ async function createAdCreative(
       name: creative.name,
       object_story_spec: objectStorySpec,
     };
-
-    // Music IDs for Reels/Stories (VA)
-    if (creative.musicIds && creative.musicIds.length > 0) {
-      creativeData.degrees_of_freedom_spec = {
-        creative_features_spec: {
-          music: {
-            music_ids: creative.musicIds,
-          },
-        },
-      };
-    }
   } else {
     // DA: asset_feed_spec — 4장 이미지를 비율별로 배치 최적화
     const images = mediaAssets
@@ -186,16 +218,16 @@ async function createAdCreative(
       },
     };
 
-    // Music IDs for Reels/Stories (DA)
-    if (creative.musicIds && creative.musicIds.length > 0) {
-      creativeData.degrees_of_freedom_spec = {
-        creative_features_spec: {
-          music: {
-            music_ids: creative.musicIds,
-          },
-        },
-      };
-    }
+  }
+
+  // Omnichannel adset: applink_treatment + omnichannel_link_spec 필수
+  if (omnichannel) {
+    creativeData.applink_treatment = "automatic";
+    creativeData.omnichannel_link_spec = {
+      web: { url: websiteUrl },
+      ios: omnichannel.ios,
+      android: omnichannel.android,
+    };
   }
 
   const response = await fetch(url, {
@@ -392,10 +424,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Omnichannel 세트는 DPA(동적제품광고)만 호환 — 수동 소재 업로드 불가, 자동 제외
-    const skippedOmni = targetAdsets.filter((a) => a.isOmnichannel).map((a) => a.name);
-    const regularAdsets = targetAdsets.filter((a) => !a.isOmnichannel);
-
     // Process each creative
     for (const creative of creatives) {
       // Media already uploaded via /api/upload-image — use hashes directly
@@ -407,7 +435,13 @@ export async function POST(request: NextRequest) {
       let lastCreativeId = "";
 
       // 각 광고세트마다 개별 creative 생성 (adset별 UTM 추적)
-      for (const adset of regularAdsets) {
+      for (const adset of targetAdsets) {
+        // Omnichannel adset: promoted_object에서 앱 정보 추출
+        let omnichannel: OmnichannelInfo | undefined;
+        if (adset.isOmnichannel) {
+          omnichannel = await getOmnichannelInfo(config.access_token, adset.id) || undefined;
+        }
+
         const creativeId = await createAdCreative(
           config.ad_account_id,
           config.access_token,
@@ -418,7 +452,8 @@ export async function POST(request: NextRequest) {
           adset.name,
           landingUrl,
           displayUrl,
-          description
+          description,
+          omnichannel
         );
         lastCreativeId = creativeId;
 
@@ -427,10 +462,8 @@ export async function POST(request: NextRequest) {
         if (adset.isApp) {
           appId = adset.applicationId;
           if (!appId) {
-            // 광고세트에서 application_id 조회
             appId = await getAdsetApplicationId(config.access_token, adset.id) || undefined;
           }
-          // AI코딩밸리의 경우 기본 앱 ID 사용
           if (!appId && clientName === "AI코딩밸리") {
             appId = CODINGVALLEY_APP_ID;
           }
@@ -459,10 +492,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `${results.length}개 소재가 등록되었습니다`,
       results,
-      adsetsUsed: regularAdsets.map((a) => a.name),
-      ...(skippedOmni.length > 0 && {
-        warning: `Omnichannel 세트는 DPA만 호환되어 자동 제외됨: ${skippedOmni.join(", ")}`,
-      }),
+      adsetsUsed: targetAdsets.map((a) => a.name),
     });
   } catch (error) {
     console.error("Upload error:", error);

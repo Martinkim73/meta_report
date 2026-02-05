@@ -355,52 +355,20 @@ function CreativeCard({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5">제목</label>
-            <input
-              type="text"
-              className="toss-input text-sm"
-              placeholder="예: [74% 할인] 지금 시작하기"
-              value={creative.title}
-              onChange={(e) =>
-                onUpdate({ ...creative, title: e.target.value })
-              }
-            />
-            <p className="text-xs text-muted mt-1">
-              링크 아래에 표시되는 짧은 제목이에요
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5">
-              배경 음악 ({creative.musicIds.length}/5)
-            </label>
-            <div className="space-y-2 p-3 bg-gray-50 rounded-xl">
-              {MUSIC_PRESETS.map((m) => (
-                <label key={m.id} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={creative.musicIds.includes(m.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        if (creative.musicIds.length < 5) {
-                          onUpdate({ ...creative, musicIds: [...creative.musicIds, m.id] });
-                        }
-                      } else {
-                        onUpdate({ ...creative, musicIds: creative.musicIds.filter((id) => id !== m.id) });
-                      }
-                    }}
-                    className="w-4 h-4 text-primary rounded"
-                  />
-                  <span className="text-sm">{m.label}</span>
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-muted mt-1">
-              릴스/스토리에 적용 (최대 5개)
-            </p>
-          </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">제목</label>
+          <input
+            type="text"
+            className="toss-input text-sm"
+            placeholder="예: [74% 할인] 지금 시작하기"
+            value={creative.title}
+            onChange={(e) =>
+              onUpdate({ ...creative, title: e.target.value })
+            }
+          />
+          <p className="text-xs text-muted mt-1">
+            링크 아래에 표시되는 짧은 제목이에요
+          </p>
         </div>
       </div>
     </div>
@@ -435,7 +403,7 @@ export default function UploadPage() {
 
   // 공통 설정 (수정 가능)
   const [landingUrl, setLandingUrl] = useState("https://www.codingvalley.com/ldm/7");
-  const [displayUrl, setDisplayUrl] = useState("codingvalley.com");
+  const [displayUrl, setDisplayUrl] = useState("https://www.codingvalley.com");
   const [description, setDescription] = useState("AI 시대 성공 전략, AI 코딩밸리");
   const [defaultTitle, setDefaultTitle] = useState("🔥 지금 무료체험 + 74% 할인!");
 
@@ -763,7 +731,6 @@ export default function UploadPage() {
                           setSelectedAdsetIds(selectedAdsetIds.filter((id) => id !== a.id));
                         }
                       }}
-                      disabled={!a.compatible}
                       className="w-4 h-4"
                     />
                     <span className="text-sm flex-1">
@@ -771,10 +738,10 @@ export default function UploadPage() {
                       {a.status === "PAUSED" && <span className="text-muted"> (일시중지)</span>}
                     </span>
                     {a.isOmnichannel && (
-                      <span className="text-xs text-orange-500" title="Omnichannel 세트는 DPA만 호환 — 수동 소재 업로드 불가">⚠️OMNI</span>
+                      <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded" title="웹&앱 Omnichannel">OMNI</span>
                     )}
-                    {a.warning && !a.isOmnichannel && (
-                      <span className="text-xs text-orange-500" title={a.warning}>⚠️</span>
+                    {a.isApp && !a.isOmnichannel && (
+                      <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">APP</span>
                     )}
                   </label>
                 ))

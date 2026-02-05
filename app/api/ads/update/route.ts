@@ -11,7 +11,7 @@ const AI_CODINGVALLEY_INSTAGRAM_ID = "17841459147478114";
 
 // 기본값
 const DEFAULT_LANDING_URL = "https://www.codingvalley.com/ldm/7";
-const DEFAULT_DISPLAY_URL = "codingvalley.com";
+const DEFAULT_DISPLAY_URL = "https://www.codingvalley.com";
 const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
 
 interface MediaUpload {
@@ -166,7 +166,7 @@ async function createNewCreative(
 
   const creativeData: Record<string, unknown> = {
     access_token: accessToken,
-    name: `${name}_updated_${Date.now()}`,
+    name: name,
     object_story_spec: objectStorySpec,
     asset_feed_spec: {
       images,

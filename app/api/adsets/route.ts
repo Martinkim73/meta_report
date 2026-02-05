@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
         status: a.status,
         isOmnichannel,
         isApp,
-        compatible: !isOmnichannel, // APP도 호환, Omnichannel만 제외
-        warning: isOmnichannel ? "Omnichannel (DPA 전용)" : null,
+        compatible: true,
+        warning: null,
       };
     });
 
