@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClients, addClient, deleteClient, ClientConfig } from "@/lib/redis";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
     const clients = await getClients();
