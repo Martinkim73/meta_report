@@ -433,6 +433,12 @@ export default function UploadPage() {
   const [clients, setClients] = useState<string[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>("");
 
+  // 공통 설정 (수정 가능)
+  const [landingUrl, setLandingUrl] = useState("https://www.codingvalley.com/ldm/7");
+  const [displayUrl, setDisplayUrl] = useState("codingvalley.com");
+  const [description, setDescription] = useState("AI 시대 성공 전략, AI 코딩밸리");
+  const [defaultTitle, setDefaultTitle] = useState("🔥 지금 무료체험 + 74% 할인!");
+
   // Campaign & Adset selection
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
@@ -516,7 +522,9 @@ export default function UploadPage() {
   };
 
   const addCreative = () => {
-    setCreatives([...creatives, createEmptyCreative(type)]);
+    const newCreative = createEmptyCreative(type);
+    newCreative.title = defaultTitle; // 공통 설정의 기본 타이틀 적용
+    setCreatives([...creatives, newCreative]);
   };
 
   const duplicateCreative = (index: number) => {
@@ -615,6 +623,10 @@ export default function UploadPage() {
           clientName: selectedClient,
           adsets: selectedAdsets,
           creatives: creativesPayload,
+          // 공통 설정
+          landingUrl,
+          displayUrl,
+          description,
         }),
       });
 
@@ -820,44 +832,77 @@ export default function UploadPage() {
         </button>
 
         {showCommon && (
-          <div className="mt-4 pt-4 border-t border-border space-y-3 text-sm">
+          <div className="mt-4 pt-4 border-t border-border space-y-4 text-sm">
+            {/* 수정 가능한 필드들 */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="text-muted">페이스북 페이지</span>
-                <p className="font-medium">AI코딩밸리</p>
+                <label className="block text-muted mb-1">연결 링크</label>
+                <input
+                  type="text"
+                  className="toss-input text-sm"
+                  value={landingUrl}
+                  onChange={(e) => setLandingUrl(e.target.value)}
+                  placeholder="https://www.codingvalley.com/ldm/7"
+                />
               </div>
               <div>
-                <span className="text-muted">인스타그램 계정</span>
-                <p className="font-medium">ai_codingvalley</p>
-              </div>
-              <div>
-                <span className="text-muted">CTA 버튼</span>
-                <p className="font-medium">자세히 알아보기</p>
-              </div>
-              <div>
-                <span className="text-muted">랜딩 URL</span>
-                <p className="font-medium truncate text-xs">codingvalley.com/ldm/7</p>
+                <label className="block text-muted mb-1">표시 링크</label>
+                <input
+                  type="text"
+                  className="toss-input text-sm"
+                  value={displayUrl}
+                  onChange={(e) => setDisplayUrl(e.target.value)}
+                  placeholder="codingvalley.com"
+                />
               </div>
             </div>
             <div>
-              <span className="text-muted">UTM 파라미터</span>
+              <label className="block text-muted mb-1">설명</label>
+              <input
+                type="text"
+                className="toss-input text-sm"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="AI 시대 성공 전략, AI 코딩밸리"
+              />
+            </div>
+            <div>
+              <label className="block text-muted mb-1">기본 타이틀</label>
+              <input
+                type="text"
+                className="toss-input text-sm"
+                value={defaultTitle}
+                onChange={(e) => setDefaultTitle(e.target.value)}
+                placeholder="🔥 지금 무료체험 + 74% 할인!"
+              />
+              <p className="text-xs text-muted mt-1">새 소재 추가 시 기본으로 적용됩니다</p>
+            </div>
+
+            {/* 고정 설정 (읽기 전용) */}
+            <div className="pt-3 border-t border-border">
+              <p className="text-xs text-muted mb-2">자동 적용 설정</p>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-muted">페이스북 페이지:</span>
+                  <span className="ml-1 font-medium">AI코딩밸리</span>
+                </div>
+                <div>
+                  <span className="text-muted">인스타그램:</span>
+                  <span className="ml-1 font-medium">ai_codingvalley</span>
+                </div>
+                <div>
+                  <span className="text-muted">CTA:</span>
+                  <span className="ml-1 font-medium">자세히 알아보기</span>
+                </div>
+                <div>
+                  <span className="text-muted">UTM:</span>
+                  <span className="ml-1 font-medium">source=meta, medium=cpc</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <span className="text-muted text-xs">노출 위치 매핑</span>
               <p className="font-medium text-xs">
-                source=meta, medium=cpc, campaign=fbig_web_cretest_YYMMDD
-              </p>
-            </div>
-            <div>
-              <span className="text-muted">기본 텍스트</span>
-              <p className="font-medium text-xs">
-                Title: 🔥 지금 무료체험 + 74% 할인! | Desc: AI 시대 성공 전략, AI 코딩밸리
-              </p>
-            </div>
-            <div>
-              <span className="text-muted">개선사항 (Advantage+)</span>
-              <p className="font-medium">음악만 활성, 나머지 미설정</p>
-            </div>
-            <div>
-              <span className="text-muted">노출 위치 매핑</span>
-              <p className="font-medium">
                 {type === "DA"
                   ? "피드(4:5), 스토리(9:16), 릴스(9:16), 기본(1:1) 자동 매핑"
                   : "기본(자유), 스토리/릴스(9:16), 피드(1:1) 자동 매핑"}

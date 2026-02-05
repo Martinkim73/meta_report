@@ -35,12 +35,16 @@ interface UploadRequest {
   adsetIds?: string[];  // deprecated, use adsets
   adsets?: AdsetInfo[];
   creatives: CreativePayload[];
+  // 공통 설정 (수정 가능)
+  landingUrl?: string;
+  displayUrl?: string;
+  description?: string;
 }
 
 
-// Landing & UTM constants (AI코딩밸리)
-const LANDING_BASE = "https://www.codingvalley.com/ldm/7";
-const DISPLAY_URL = "https://www.codingvalley.com";
+// Landing & UTM defaults (AI코딩밸리)
+const DEFAULT_LANDING_URL = "https://www.codingvalley.com/ldm/7";
+const DEFAULT_DISPLAY_URL = "codingvalley.com";
 const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
 
 // AI코딩밸리 Instagram 계정 ID (ai_codingvalley)
@@ -75,7 +79,7 @@ async function getAdsetApplicationId(accessToken: string, adsetId: string): Prom
   }
 }
 
-function generateUtmUrl(creativeName: string, adsetName: string): string {
+function generateUtmUrl(creativeName: string, adsetName: string, landingUrl: string): string {
   const now = new Date();
   const Y = now.getFullYear().toString();
   const M = (now.getMonth() + 1).toString().padStart(2, "0");
@@ -87,7 +91,7 @@ function generateUtmUrl(creativeName: string, adsetName: string): string {
   params.set("utm_id", `${Y}${M}${D}001`);
   params.set("utm_campaign", `fbig_web_cretest_${YY}${M}${D}`);
   params.set("utm_content", `${adsetName}__${creativeName}`);
-  return `${LANDING_BASE}?${params.toString()}`;
+  return `${landingUrl}?${params.toString()}`;
 }
 
 // Create Ad Creative — DA uses asset_feed_spec (multi-image, placement optimized), VA uses object_story_spec
@@ -98,10 +102,13 @@ async function createAdCreative(
   mediaAssets: { hash?: string; videoId?: string; slot: string }[],
   config: ClientConfig,
   isVideo: boolean,
-  adsetName: string
+  adsetName: string,
+  landingUrl: string,
+  displayUrl: string,
+  description: string
 ): Promise<string> {
   const url = `${GRAPH_API_BASE}/${adAccountId}/adcreatives`;
-  const websiteUrl = generateUtmUrl(creative.name, adsetName);
+  const websiteUrl = generateUtmUrl(creative.name, adsetName, landingUrl);
 
   let creativeData: Record<string, unknown>;
 
@@ -166,11 +173,11 @@ async function createAdCreative(
         images,
         bodies: [{ text: creative.body }],
         titles: [{ text: creative.title }],
-        descriptions: [{ text: DEFAULT_DESCRIPTION }],
+        descriptions: [{ text: description }],
         link_urls: [
           {
             website_url: websiteUrl,
-            display_url: DISPLAY_URL,
+            display_url: displayUrl,
           },
         ],
         call_to_action_types: ["LEARN_MORE"],
@@ -310,6 +317,11 @@ export async function POST(request: NextRequest) {
     const body: UploadRequest = JSON.parse(Buffer.from(arrayBuffer).toString("utf-8"));
     const { type, clientName, adsetIds, adsets: adsetInfos, creatives } = body;
 
+    // 공통 설정 (기본값 적용)
+    const landingUrl = body.landingUrl || DEFAULT_LANDING_URL;
+    const displayUrl = body.displayUrl || DEFAULT_DISPLAY_URL;
+    const description = body.description || DEFAULT_DESCRIPTION;
+
     // Get client config
     const config = await getClient(clientName);
     if (!config) {
@@ -403,7 +415,10 @@ export async function POST(request: NextRequest) {
           mediaAssets,
           config,
           isVideo,
-          adset.name
+          adset.name,
+          landingUrl,
+          displayUrl,
+          description
         );
         lastCreativeId = creativeId;
 
