@@ -151,14 +151,11 @@ async function createNewCreative(
   const websiteUrl = generateUtmUrl(name, adsetName, landingUrl);
   const timestamp = Date.now();
 
-  // 슬롯별 이미지 찾기
-  const findImage = (slotPattern: string) =>
-    media.find((m) => m.hash && m.slot?.toLowerCase().includes(slotPattern));
-
-  const img4x5 = findImage("4x5") || findImage("4:5");
-  const img9x16 = media.find((m) => m.hash && m.slot?.toLowerCase().includes("9x16") && !m.slot?.toLowerCase().includes("reels"));
-  const img9x16Reels = findImage("reels") || media.find((m) => m.hash && m.slot?.toLowerCase().includes("9x16") && m.slot?.toLowerCase().includes("reels"));
-  const img1x1 = findImage("1x1") || findImage("1:1");
+  // ratio로 이미지 찾기
+  const img4x5 = media.find((m) => m.hash && m.ratio === "4:5");
+  const img9x16 = media.find((m) => m.hash && m.ratio === "9:16" && m.slot?.includes("스토리"));
+  const img9x16Reels = media.find((m) => m.hash && m.ratio === "9:16" && m.slot?.includes("릴스"));
+  const img1x1 = media.find((m) => m.hash && m.ratio === "1:1");
 
   // 이미지 배열 생성 (adlabels 포함)
   const images: { hash: string; adlabels: { name: string }[] }[] = [];
