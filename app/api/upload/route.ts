@@ -25,6 +25,8 @@ interface AdsetInfo {
   id: string;
   name: string;
   isOmnichannel: boolean;
+  isApp?: boolean;
+  applicationId?: string;
 }
 
 interface UploadRequest {
@@ -40,6 +42,38 @@ interface UploadRequest {
 const LANDING_BASE = "https://www.codingvalley.com/ldm/7";
 const DISPLAY_URL = "https://www.codingvalley.com";
 const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
+
+// AI코딩밸리 Instagram 계정 ID (ai_codingvalley)
+const AI_CODINGVALLEY_INSTAGRAM_ID = "17841459147478114";
+
+// 코딩밸리 모바일앱 ID
+const CODINGVALLEY_APP_ID = "1095821498597595";
+
+// Instagram business account 조회
+async function getInstagramActorId(accessToken: string, pageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${GRAPH_API_BASE}/${pageId}?fields=instagram_business_account&access_token=${accessToken}`
+    );
+    const data = await res.json();
+    return data.instagram_business_account?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+// 광고세트에서 application_id 조회
+async function getAdsetApplicationId(accessToken: string, adsetId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${GRAPH_API_BASE}/${adsetId}?fields=promoted_object&access_token=${accessToken}`
+    );
+    const data = await res.json();
+    return data.promoted_object?.application_id || null;
+  } catch {
+    return null;
+  }
+}
 
 function generateUtmUrl(creativeName: string, adsetName: string): string {
   const now = new Date();
@@ -204,20 +238,38 @@ async function createAd(
   accessToken: string,
   adsetId: string,
   creativeId: string,
-  name: string
+  name: string,
+  isApp: boolean = false,
+  applicationId?: string
 ): Promise<string> {
   const url = `${GRAPH_API_BASE}/${adAccountId}/ads`;
+
+  const adData: Record<string, unknown> = {
+    access_token: accessToken,
+    name,
+    adset_id: adsetId,
+    creative: JSON.stringify({ creative_id: creativeId }),
+    status: "PAUSED", // Start paused for safety
+  };
+
+  // 앱 광고세트일 경우 tracking_specs 추가
+  if (isApp && applicationId) {
+    adData.tracking_specs = JSON.stringify([
+      {
+        "action.type": ["mobile_app_install"],
+        "application": [applicationId],
+      },
+      {
+        "action.type": ["app_custom_event"],
+        "application": [applicationId],
+      },
+    ]);
+  }
 
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      access_token: accessToken,
-      name,
-      adset_id: adsetId,
-      creative: JSON.stringify({ creative_id: creativeId }),
-      status: "PAUSED", // Start paused for safety
-    }),
+    body: JSON.stringify(adData),
   });
 
   const result = await response.json();
@@ -258,6 +310,18 @@ export async function POST(request: NextRequest) {
           { error: "Facebook 페이지를 찾을 수 없습니다. 광고주 설정에서 페이지 ID를 입력해주세요." },
           { status: 400 }
         );
+      }
+    }
+
+    // AI코딩밸리의 경우 Instagram actor ID 자동 설정
+    if (clientName === "AI코딩밸리" && !config.instagram_actor_id) {
+      config.instagram_actor_id = AI_CODINGVALLEY_INSTAGRAM_ID;
+    }
+    // 다른 클라이언트는 페이지에서 Instagram 계정 조회
+    if (!config.instagram_actor_id && config.page_id) {
+      const igId = await getInstagramActorId(config.access_token, config.page_id);
+      if (igId) {
+        config.instagram_actor_id = igId;
       }
     }
 
@@ -321,12 +385,28 @@ export async function POST(request: NextRequest) {
         );
         lastCreativeId = creativeId;
 
+        // 앱 광고세트인 경우 application_id 조회 또는 기본값 사용
+        let appId: string | undefined;
+        if (adset.isApp) {
+          appId = adset.applicationId;
+          if (!appId) {
+            // 광고세트에서 application_id 조회
+            appId = await getAdsetApplicationId(config.access_token, adset.id) || undefined;
+          }
+          // AI코딩밸리의 경우 기본 앱 ID 사용
+          if (!appId && clientName === "AI코딩밸리") {
+            appId = CODINGVALLEY_APP_ID;
+          }
+        }
+
         const adId = await createAd(
           config.ad_account_id,
           config.access_token,
           adset.id,
           creativeId,
-          creative.name
+          creative.name,
+          adset.isApp || false,
+          appId
         );
         adIds.push(adId);
       }

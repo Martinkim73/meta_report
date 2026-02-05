@@ -419,6 +419,7 @@ interface Adset {
   status: string;
   compatible: boolean;
   isOmnichannel: boolean;
+  isApp: boolean;
   warning: string | null;
 }
 
@@ -604,7 +605,7 @@ export default function UploadPage() {
       // Phase 2: 해시로 크리에이티브 + 광고 생성
       const selectedAdsets = adsets
         .filter((a) => selectedAdsetIds.includes(a.id))
-        .map((a) => ({ id: a.id, name: a.name, isOmnichannel: a.isOmnichannel }));
+        .map((a) => ({ id: a.id, name: a.name, isOmnichannel: a.isOmnichannel, isApp: a.isApp }));
 
       const response = await fetch("/api/upload", {
         method: "POST",

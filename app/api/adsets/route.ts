@@ -47,8 +47,9 @@ export async function GET(request: NextRequest) {
         name: a.name,
         status: a.status,
         isOmnichannel,
-        compatible: !isApp, // 크로스채널도 호환 가능하게 변경
-        warning: isApp ? "앱 광고세트" : null,
+        isApp,
+        compatible: !isOmnichannel, // APP도 호환, Omnichannel만 제외
+        warning: isOmnichannel ? "Omnichannel (DPA 전용)" : null,
       };
     });
 
