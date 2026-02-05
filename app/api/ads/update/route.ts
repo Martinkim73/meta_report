@@ -224,7 +224,7 @@ async function updateAdCreative(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       access_token: accessToken,
-      creative: JSON.stringify({ creative_id: creativeId }),
+      creative: { creative_id: creativeId },
     }),
   });
 

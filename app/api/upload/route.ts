@@ -309,13 +309,13 @@ async function createAd(
     access_token: accessToken,
     name,
     adset_id: adsetId,
-    creative: JSON.stringify({ creative_id: creativeId }),
+    creative: { creative_id: creativeId },
     status: "PAUSED", // Start paused for safety
   };
 
   // 앱 광고세트일 경우 tracking_specs 추가
   if (isApp && applicationId) {
-    adData.tracking_specs = JSON.stringify([
+    adData.tracking_specs = [
       {
         "action.type": ["mobile_app_install"],
         "application": [applicationId],
@@ -324,7 +324,7 @@ async function createAd(
         "action.type": ["app_custom_event"],
         "application": [applicationId],
       },
-    ]);
+    ];
   }
 
   const response = await fetch(url, {
