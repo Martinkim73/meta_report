@@ -106,7 +106,7 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 }
 ```
 
-## 현재 상태 (2026.02.04)
+## 현재 상태 (2026.02.05)
 
 ### ✅ 완료된 작업
 - **Streamlit → Next.js 마이그레이션 완료**
@@ -116,8 +116,14 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 - **광고 소재 업로드 기능 완료** (app/api/upload/route.ts)
   - 이미지 업로드 → 크리에이티브 생성 → 광고 생성
   - DA(이미지) / VA(영상) 지원
-  - Omnichannel adset 지원
+  - APP 광고세트 지원 (web&app 캠페인)
   - 캠페인/광고세트 선택 기능
+  - Music ID Meta API 전달 (릴스/스토리용)
+- **AI코딩밸리 전용 설정**
+  - Instagram: ai_codingvalley (ID: 17841459147478114) 자동 설정
+  - 앱 ID: 1095821498597595 (코딩밸리 모바일앱)
+  - Landing: codingvalley.com/ldm/7
+  - UTM: source=meta, medium=cpc
 
 ### 🖥️ 로컬 개발 환경
 - 서버: `npm run dev` → http://localhost:3000
@@ -142,6 +148,12 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
    - Meta API 호환성 이슈 해결 필요
 
 ### 📝 변경 이력
+**2026.02.05**
+- APP 광고세트 지원 (web&app 캠페인의 broad_purchase 등)
+- AI코딩밸리 Instagram 자동 설정 (ai_codingvalley)
+- Music ID Meta API 전달 (degrees_of_freedom_spec)
+- UI 공통 설정 패널 실제 값과 일치하도록 수정
+
 **2026.02.04**
 - 광고 업로드 API 완성 (이미지/영상 → 크리에이티브 → 광고)
 - Omnichannel adset 지원 추가
@@ -154,6 +166,4 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ### 다음 작업
 - [ ] 분석 엔진 구현
 - [ ] Discord 연동
-- [ ] Vercel 배포
 - [ ] AI 광고 문구 자동 생성
-- [ ] Instagram actor ID 호환성 수정
