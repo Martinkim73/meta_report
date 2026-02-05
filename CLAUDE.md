@@ -112,18 +112,26 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 - **Streamlit → Next.js 마이그레이션 완료**
 - Next.js 15 + TypeScript + Tailwind CSS 설정
 - 토스 스타일 UI 구현
-- 모든 페이지 구현 (홈, 광고주 관리, 분석 결과, 업로드)
+- 모든 페이지 구현 (홈, 광고주 관리, 분석 결과, 업로드, 소재 교체)
 - **광고 소재 업로드 기능 완료** (app/api/upload/route.ts)
   - 이미지 업로드 → 크리에이티브 생성 → 광고 생성
   - DA(이미지) / VA(영상) 지원
   - APP 광고세트 지원 (web&app 캠페인)
   - 캠페인/광고세트 선택 기능
   - Music ID Meta API 전달 (릴스/스토리용)
+  - 공통 설정 편집 가능 (연결링크, 표시링크, 설명, 기본타이틀)
+- **소재 교체 기능 완료** (app/edit/page.tsx + app/api/ads/update/route.ts)
+  - 기존 Meta 광고의 이미지를 새 이미지로 교체
+  - DA 4슬롯 (4x5, 9x16, 1x1, reels) 드래그&드롭 업로드
+  - 두 단계 제출: Phase1 이미지 업로드 → Phase2 크리에이티브 생성+광고 업데이트
+  - 기존 텍스트 유지 + 선택적 수정 지원
+  - **테스트 완료**: branding_benefit_focus_v3_260129_img_test0205 × 2개 광고에 test2 이미지 교체 성공
 - **AI코딩밸리 전용 설정**
   - Instagram: ai_codingvalley (ID: 17841459147478114) 자동 설정
   - 앱 ID: 1095821498597595 (코딩밸리 모바일앱)
   - Landing: codingvalley.com/ldm/7
   - UTM: source=meta, medium=cpc
+- **runtime = "nodejs" 모든 API 라우트에 적용** (Upstash Redis edge runtime 호환성 수정)
 
 ### 🖥️ 로컬 개발 환경
 - 서버: `npm run dev` → http://localhost:3000
@@ -148,7 +156,14 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
    - Meta API 호환성 이슈 해결 필요
 
 ### 📝 변경 이력
-**2026.02.05**
+**2026.02.05 (후반)**
+- runtime = "nodejs" 모든 API 라우트 적용 (ads, adsets, campaigns, clients)
+- 소재 교체 시스템 구현 완료 (소재 교체 페이지 + /api/ads/update)
+- 테스트: branding_benefit_focus_v3_260129_img_test0205 × 2개 광고 이미지 교체 성공
+  - 대상: broad_purchase_n_DA_251212, interest_businessai_n_DA_251212
+  - test2 이미지 4개 (4x5, 9x16, 1x1, reels) → Meta Graph API 확인
+
+**2026.02.05 (초반)**
 - APP 광고세트 지원 (web&app 캠페인의 broad_purchase 등)
 - AI코딩밸리 Instagram 자동 설정 (ai_codingvalley)
 - Music ID Meta API 전달 (degrees_of_freedom_spec)
