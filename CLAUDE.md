@@ -90,6 +90,50 @@ META_AD_ACCOUNT_ID=act_xxxx
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
+## Meta 광고 지면별 이미지 비율 규칙 (필수)
+
+### 영역별 기본 비율
+| 영역 | 기본 비율 | 포함 지면 |
+|------|----------|-----------|
+| **피드, 릴스 인스트림** | 1:1 기본, **4:5 사용** | Facebook 피드, Instagram 피드 |
+| **스토리, 상태, 릴스, 검색 결과** | 9:16 기본 | Facebook/Instagram 스토리, 릴스 등 |
+| **오른쪽 칼럼, 검색 결과** | 1:1 원본 | Facebook 오른쪽 칼럼, 검색 |
+
+### 이미지 4슬롯 → 지면 매핑 (asset_customization_rules)
+
+| 슬롯 | 비율 | 적용 지면 (Meta API positions) |
+|------|------|--------------------------------|
+| **4:5** | 4:5 | `facebook: feed`, `instagram: stream` (Instagram 피드) |
+| **9:16** | 9:16 | `facebook: story`, `instagram: story, ig_search, profile_reels`, `messenger: story`, `audience_network: classic` |
+| **9:16 Reels** | 9:16 | `instagram: reels`, `facebook: facebook_reels` |
+| **1:1** | 1:1 | `facebook: right_hand_column, search` + **기본값(fallback)** |
+
+### 우선순위 (priority) - 웹구매 광고세트 기준
+```
+priority 1: 9:16      → facebook story + instagram story/ig_search/profile_reels + messenger story + audience_network classic
+priority 2: 1:1       → facebook right_hand_column, search
+priority 3: 4:5       → facebook feed
+priority 4: 4:5       → instagram stream (= Instagram 피드)
+priority 5: 9:16 Reels → instagram reels
+priority 6: 9:16 Reels → facebook_reels
+priority 7: 1:1       → 기본값 (나머지 모든 지면)
+```
+
+### 핵심 규칙 (반드시 기억)
+- **Facebook 피드 = `feed`, Instagram 피드 = `stream`** → 둘 다 **4:5** 사용
+- **Facebook 릴스 = `facebook_reels`, Instagram 릴스 = `reels`** → 둘 다 **9:16 Reels** 사용
+- **오른쪽 칼럼, 검색 결과** → **1:1 원본** 사용
+- **나머지 지면** → **1:1이 기본값**으로 적용
+
+### 참고 광고 ID
+**omnichannel (web&app 캠페인):**
+- 120243171098540154, 120243171098520154, 120242865102020154
+
+**웹구매 광고세트 (omni 아님):**
+- 120242623999320154, 120242864324850154, 120242623999310154
+
+---
+
 ## clients.json 설정
 프로젝트 루트에 `clients.json` 파일 생성 (gitignore됨):
 ```json

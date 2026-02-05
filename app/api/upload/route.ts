@@ -180,27 +180,167 @@ async function createAdCreative(
       object_story_spec: objectStorySpec,
     };
   } else {
-    // DA: asset_feed_spec — 4장 이미지를 비율별로 배치 최적화
-    const images = mediaAssets
-      .filter((m) => m.hash)
-      .map((m) => ({ hash: m.hash }));
+    // DA: asset_feed_spec — 4장 이미지를 비율별로 배치 최적화 + asset_customization_rules
+    const timestamp = Date.now();
+
+    // 슬롯별 이미지 찾기
+    const findImage = (slotPattern: string) =>
+      mediaAssets.find((m) => m.hash && m.slot?.toLowerCase().includes(slotPattern));
+
+    const img4x5 = findImage("4x5") || findImage("4:5");
+    const img9x16 = findImage("9x16") && !findImage("9x16")?.slot?.toLowerCase().includes("reels")
+      ? findImage("9x16")
+      : mediaAssets.find((m) => m.hash && m.slot?.toLowerCase().includes("9x16") && !m.slot?.toLowerCase().includes("reels"));
+    const img9x16Reels = findImage("reels") || mediaAssets.find((m) => m.hash && m.slot?.toLowerCase().includes("9x16") && m.slot?.toLowerCase().includes("reels"));
+    const img1x1 = findImage("1x1") || findImage("1:1");
+
+    // 이미지 배열 생성 (adlabels 포함)
+    const images: { hash: string; adlabels: { name: string }[] }[] = [];
+    const labelMap: Record<string, string> = {};
+
+    // 4:5 이미지 (Facebook 피드 + Instagram 피드)
+    if (img4x5?.hash) {
+      const label = `placement_asset_4x5_${timestamp}`;
+      images.push({ hash: img4x5.hash, adlabels: [{ name: label }] });
+      labelMap["4x5"] = label;
+    }
+
+    // 9:16 이미지 (스토리 등)
+    if (img9x16?.hash) {
+      const label = `placement_asset_9x16_${timestamp}`;
+      // 이미 같은 해시가 있으면 라벨만 추가
+      const existing = images.find((img) => img.hash === img9x16.hash);
+      if (existing) {
+        existing.adlabels.push({ name: label });
+      } else {
+        images.push({ hash: img9x16.hash, adlabels: [{ name: label }] });
+      }
+      labelMap["9x16"] = label;
+    }
+
+    // 9:16 Reels 이미지
+    if (img9x16Reels?.hash) {
+      const label = `placement_asset_9x16reels_${timestamp}`;
+      const existing = images.find((img) => img.hash === img9x16Reels.hash);
+      if (existing) {
+        existing.adlabels.push({ name: label });
+      } else {
+        images.push({ hash: img9x16Reels.hash, adlabels: [{ name: label }] });
+      }
+      labelMap["9x16reels"] = label;
+    }
+
+    // 1:1 이미지 (기본값)
+    if (img1x1?.hash) {
+      const label = `placement_asset_1x1_${timestamp}`;
+      const existing = images.find((img) => img.hash === img1x1.hash);
+      if (existing) {
+        existing.adlabels.push({ name: label });
+      } else {
+        images.push({ hash: img1x1.hash, adlabels: [{ name: label }] });
+      }
+      labelMap["1x1"] = label;
+    }
 
     if (images.length === 0) {
       throw new Error("No image hashes available");
     }
 
-    const objectStorySpec: Record<string, unknown> = {
-      page_id: config.page_id,
-    };
+    // asset_customization_rules 생성
+    const assetCustomizationRules: Record<string, unknown>[] = [];
+    let priority = 1;
 
-    if (config.instagram_actor_id) {
-      objectStorySpec.instagram_user_id = config.instagram_actor_id;
+    // Rule 1: 9:16 → story, ig_search, profile_reels (messenger, audience_network 포함)
+    if (labelMap["9x16"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
+          facebook_positions: ["story"],
+          instagram_positions: ["ig_search", "profile_reels", "story"],
+          messenger_positions: ["story"],
+          audience_network_positions: ["classic"],
+        },
+        image_label: { name: labelMap["9x16"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 2: 1:1 → right_hand_column, search
+    if (labelMap["1x1"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["right_hand_column", "search"],
+        },
+        image_label: { name: labelMap["1x1"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 3: 4:5 → facebook feed
+    if (labelMap["4x5"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["feed"],
+        },
+        image_label: { name: labelMap["4x5"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 4: 4:5 → instagram stream (피드)
+    if (labelMap["4x5"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["instagram"],
+          instagram_positions: ["stream"],
+        },
+        image_label: { name: labelMap["4x5"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 5: 9:16 Reels → instagram reels
+    if (labelMap["9x16reels"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["instagram"],
+          instagram_positions: ["reels"],
+        },
+        image_label: { name: labelMap["9x16reels"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 6: 9:16 Reels → facebook_reels
+    if (labelMap["9x16reels"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["facebook_reels"],
+        },
+        image_label: { name: labelMap["9x16reels"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 7: 1:1 → 기본값 (나머지 모든 지면)
+    if (labelMap["1x1"]) {
+      assetCustomizationRules.push({
+        customization_spec: {},
+        image_label: { name: labelMap["1x1"] },
+        priority: priority++,
+      });
     }
 
     creativeData = {
       access_token: accessToken,
       name: creative.name,
-      object_story_spec: objectStorySpec,
+      object_story_spec: {
+        page_id: config.page_id,
+        ...(config.instagram_actor_id && { instagram_actor_id: config.instagram_actor_id }),
+      },
       asset_feed_spec: {
         images,
         bodies: [{ text: creative.body }],
@@ -214,6 +354,7 @@ async function createAdCreative(
         ],
         call_to_action_types: ["LEARN_MORE"],
         ad_formats: ["AUTOMATIC_FORMAT"],
+        ...(assetCustomizationRules.length > 0 && { asset_customization_rules: assetCustomizationRules }),
         optimization_type: "PLACEMENT",
       },
     };
