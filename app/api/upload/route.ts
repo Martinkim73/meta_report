@@ -129,6 +129,17 @@ async function createAdCreative(
       name: creative.name,
       object_story_spec: objectStorySpec,
     };
+
+    // Music IDs for Reels/Stories (VA)
+    if (creative.musicIds && creative.musicIds.length > 0) {
+      creativeData.degrees_of_freedom_spec = {
+        creative_features_spec: {
+          music: {
+            music_ids: creative.musicIds,
+          },
+        },
+      };
+    }
   } else {
     // DA: asset_feed_spec — 4장 이미지를 비율별로 배치 최적화
     const images = mediaAssets
@@ -167,6 +178,17 @@ async function createAdCreative(
         optimization_type: "PLACEMENT",
       },
     };
+
+    // Music IDs for Reels/Stories (DA)
+    if (creative.musicIds && creative.musicIds.length > 0) {
+      creativeData.degrees_of_freedom_spec = {
+        creative_features_spec: {
+          music: {
+            music_ids: creative.musicIds,
+          },
+        },
+      };
+    }
   }
 
   const response = await fetch(url, {

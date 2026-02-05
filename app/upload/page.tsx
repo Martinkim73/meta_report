@@ -828,7 +828,7 @@ export default function UploadPage() {
               </div>
               <div>
                 <span className="text-muted">인스타그램 계정</span>
-                <p className="font-medium">연결됨</p>
+                <p className="font-medium">ai_codingvalley</p>
               </div>
               <div>
                 <span className="text-muted">CTA 버튼</span>
@@ -836,13 +836,19 @@ export default function UploadPage() {
               </div>
               <div>
                 <span className="text-muted">랜딩 URL</span>
-                <p className="font-medium truncate">clients.json 설정값</p>
+                <p className="font-medium truncate text-xs">codingvalley.com/ldm/7</p>
               </div>
             </div>
             <div>
               <span className="text-muted">UTM 파라미터</span>
-              <p className="font-medium text-xs text-muted">
-                자동 생성 (source=facebook, medium=paid)
+              <p className="font-medium text-xs">
+                source=meta, medium=cpc, campaign=fbig_web_cretest_YYMMDD
+              </p>
+            </div>
+            <div>
+              <span className="text-muted">기본 텍스트</span>
+              <p className="font-medium text-xs">
+                Title: 🔥 지금 무료체험 + 74% 할인! | Desc: AI 시대 성공 전략, AI 코딩밸리
               </p>
             </div>
             <div>
