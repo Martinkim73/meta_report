@@ -101,6 +101,9 @@ export default function EditPage() {
   // 탭 (DA/VA)
   const [activeTab, setActiveTab] = useState<"DA" | "VA">("DA");
 
+  // 검색어
+  const [searchQuery, setSearchQuery] = useState("");
+
   // 소재 배열
   const [creatives, setCreatives] = useState<Creative[]>([
     {
@@ -202,6 +205,16 @@ export default function EditPage() {
   const updateCreativeAd = (id: string, adId: string) => {
     setCreatives(creatives.map((c) => (c.id === id ? { ...c, adId } : c)));
   };
+
+  // 광고 필터링 (검색어 + 정렬)
+  const filteredAds = ads
+    .filter((ad) => ad.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      // 활성화된 광고 우선
+      if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+      if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
+      return 0;
+    });
 
   const handleFileUpload = async (creativeId: string, slotIndex: number, files: FileList) => {
     const creative = creatives.find((c) => c.id === creativeId);
@@ -478,19 +491,37 @@ export default function EditPage() {
                 {/* 왼쪽: 광고 선택 */}
                 <div>
                   <label className="block text-sm font-medium mb-2">교체할 광고 선택</label>
+
+                  {/* 검색 입력 */}
+                  {ads.length > 0 && (
+                    <input
+                      type="text"
+                      placeholder="광고명 검색..."
+                      className="toss-input text-sm mb-2"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  )}
+
                   <select
                     className="toss-input text-sm mb-4"
                     value={creative.adId}
                     onChange={(e) => updateCreativeAd(creative.id, e.target.value)}
-                    disabled={!selectedAdsetId}
+                    disabled={ads.length === 0}
                   >
-                    <option value="">선택하세요</option>
-                    {ads.map((ad) => (
+                    <option value="">
+                      {ads.length === 0 ? "광고세트를 먼저 선택하세요" : "선택하세요"}
+                    </option>
+                    {filteredAds.map((ad) => (
                       <option key={ad.id} value={ad.id}>
-                        {ad.name} ({ad.status === "ACTIVE" ? "🟢 활성" : "⏸️ 일시중지"})
+                        {ad.status === "ACTIVE" ? "🟢" : "⏸️"} {ad.name}
                       </option>
                     ))}
                   </select>
+
+                  {searchQuery && filteredAds.length === 0 && (
+                    <p className="text-xs text-muted mb-2">검색 결과 없음</p>
+                  )}
 
                   {creative.adId && (
                     <div className="p-3 bg-blue-50 rounded-lg">
