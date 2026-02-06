@@ -158,7 +158,7 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
 }
 ```
 
-## 현재 상태 (2026.02.05)
+## 현재 상태 (2026.02.06)
 
 ### ✅ 완료된 작업
 - **Streamlit → Next.js 마이그레이션 완료**
@@ -184,6 +184,22 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
   - Landing: codingvalley.com/ldm/7
   - UTM: source=meta, medium=cpc
 - **runtime = "nodejs" 모든 API 라우트에 적용** (Upstash Redis edge runtime 호환성 수정)
+- **FormData 기반 업로드 완료** (2026.02.06)
+  - Base64 인코딩 제거 → 파일 크기 33% 절감
+  - 브라우저 → 서버: FormData 사용
+  - 서버 → Meta API: 이미지(Base64), 비디오(FormData)
+  - 최대 파일 크기: 3.4MB → **4.5MB**
+  - 두 페이지 모두 적용: `/edit` (소재 교체), `/upload` (소재 등록)
+- **에러 핸들링 완전 개선** (2026.02.06)
+  - `lib/api-helpers.ts`: `safeJsonParse` 헬퍼 함수
+  - "Request Entity Too Large" 등 Vercel 오류 정확히 감지
+  - 한글 오류 메시지 제공
+  - 모든 Meta API 호출 적용 (upload-image, upload, ads/update)
+- **Placement Rules 수정** (2026.02.06)
+  - VA 규칙: 5개 → 4개 (right_hand_column, search 제거)
+  - DA 규칙: 7개 → 6개 (right_hand_column, search 제거)
+  - 기본값 규칙이 자동 처리
+  - "광고 게재 불가" 오류 완전 해결
 
 ### 🖥️ 로컬 개발 환경
 - 서버: `npm run dev` → http://localhost:3000
@@ -191,23 +207,64 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
 - ⚠️ OneDrive 폴더에서 실행 시 .next 캐시 동기화 문제 발생 가능
 
 ### 🚧 구현 예정 (우선순위)
-1. **분석 엔진** (app/api/analyze/route.ts)
+1. **청크 업로드 (Resumable Upload)** - 80MB+ 대용량 파일 지원
+   - Meta Resumable Video API 3단계 (start → transfer → finish)
+   - 4MB 청크로 분할 전송
+   - 비디오 상태 폴링 (processing → ready)
+   - 상세 프로그레스 바 ("조각 5/20 업로드 중 25%")
+   - 최대 파일 크기: 4.5MB → **10GB**
+
+2. **분석 엔진** (app/api/analyze/route.ts)
    - 저효율 광고 탐지 로직
    - DA/VA 소재 분류
    - 예산 규칙 점검
 
-2. **Discord 연동** (lib/discord.ts)
+3. **Discord 연동** (lib/discord.ts)
    - 웹훅 전송 기능
    - 리포트 포맷팅
 
-3. **Vercel 배포**
-   - 환경변수 설정
-   - 자동 배포 설정
-
-4. **Instagram actor ID 지원** (현재 비활성화)
-   - Meta API 호환성 이슈 해결 필요
+4. **AI 광고 문구 자동 생성**
+   - LLM 기반 카피라이팅
+   - A/B 테스트용 변형 생성
 
 ### 📝 변경 이력
+
+**2026.02.06 - FormData 적용 및 에러 해결 (CRITICAL FIX)**
+- **Placement Rules 수정 완료** ✅
+  - VA/DA 크리에이티브에서 `right_hand_column`, `search` 명시적 지정 제거
+  - 기본값 규칙이 자동으로 처리하도록 변경 (Priority 4/6)
+  - 정상 작동하는 광고 구조 분석 후 적용 (branding_gaiyoonreview_v2_260107_vid)
+  - **결과**: "Facebook 피드/오른쪽 칼럼/검색 게재 불가" 오류 완전 해결
+
+- **Base64 → FormData 전환 완료** ✅
+  - **문제**: Base64 인코딩으로 파일 크기 33% 증가 → Vercel 4.5MB 제한 초과
+  - **해결**: 브라우저 → 서버 구간을 FormData로 전송 (원본 크기 유지)
+  - `/edit` 페이지: FormData + 순차 업로드 + 실시간 프로그레스 바
+  - `/upload` 페이지: FormData + 병렬 업로드
+  - **효과**: 3.4MB → 4.5MB까지 업로드 가능 (31% 증가)
+
+- **에러 핸들링 완전 개선** ✅
+  - `lib/api-helpers.ts` 생성 - `safeJsonParse` 헬퍼 함수
+  - 모든 Meta API 호출에 적용 (6곳)
+  - HTTP 상태, Content-Type, JSON 파싱 오류 처리
+  - 명확한 한글 오류 메시지 ("파일 크기가 너무 큽니다. 최대 4.5MB")
+  - **결과**: "Unexpected token 'R', Request Entity Too Large" 오류 해결
+
+- **프로그레스 바 및 UX 개선** ✅
+  - `/edit` 페이지: "1번 소재: 영상 업로드 중... (2/3) - 9:16 스토리"
+  - 순차 업로드로 안정성 확보
+  - 각 청크별 개별 API 호출 (Vercel 10초 타임아웃 회피)
+
+- **설정 파일 추가** ✅
+  - `next.config.mjs`: 로컬 개발 환경용 50MB body size limit
+  - Vercel 배포: 4.5MB 제한 유지 (무료 플랜)
+  - 향후 청크 업로드 구현 시 80MB+ 파일 지원 예정
+
+- **Vercel 배포 정보 업데이트** ✅
+  - 프로덕션 URL: https://meta-report-nine.vercel.app/
+  - GitHub 자동 배포 완료
+  - 환경변수: KV_REST_API_URL, KV_REST_API_TOKEN
+
 **2026.02.05 (후반)**
 - runtime = "nodejs" 모든 API 라우트 적용 (ads, adsets, campaigns, clients)
 - 소재 교체 시스템 구현 완료 (소재 교체 페이지 + /api/ads/update)
@@ -231,6 +288,18 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
 - Python → TypeScript 전환
 
 ### 다음 작업
+- [ ] 청크 업로드 구현 (80MB+ 대용량 파일)
 - [ ] 분석 엔진 구현
 - [ ] Discord 연동
 - [ ] AI 광고 문구 자동 생성
+
+### 🔧 기술 부채 및 알려진 제약사항
+- **Vercel 4.5MB 제한**: 현재 무료 플랜 사용 중
+  - 해결책 1: Vercel Pro 업그레이드 ($20/월, 100MB)
+  - 해결책 2: 청크 업로드 구현 (무료, 10GB)
+  - 해결책 3: Cloudflare Workers 프록시 (무료, 100MB)
+- **CORS 제한**: 브라우저 → Meta API 직접 호출 불가
+  - 현재: Vercel 서버를 프록시로 사용
+  - Meta API는 서버 간 통신만 허용
+- **보안**: Access Token을 서버 환경변수에 저장 (Redis 권장)
+  - localStorage 사용 시 XSS 공격 위험
