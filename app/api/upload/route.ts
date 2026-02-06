@@ -345,13 +345,13 @@ async function createAdCreative(
 
   }
 
-  // Omnichannel adset: applink_treatment + omnichannel_link_spec 필수
+  // Omnichannel adset: applink_treatment + degrees_of_freedom_spec 필수
   if (omnichannel) {
     creativeData.applink_treatment = "automatic";
-    creativeData.omnichannel_link_spec = {
-      web: { url: websiteUrl },
-      ios: omnichannel.ios,
-      android: omnichannel.android,
+    creativeData.degrees_of_freedom_spec = {
+      creative_features_spec: {
+        standard_enhancements: { enroll_status: "OPT_IN" }
+      }
     };
   }
 
