@@ -354,10 +354,16 @@ async function createAdCreative(
   console.log("============ CREATIVE DATA DEBUG ============");
   console.log("Creative Name:", creative.name);
   console.log("Is Video:", isVideo);
+  console.log("Ad Account ID:", adAccountId);
+  console.log("Page ID:", config.page_id);
+  console.log("Instagram ID:", config.instagram_actor_id || "N/A");
+  console.log("Omnichannel:", omnichannel ? "YES" : "NO");
   console.log("object_story_spec:", JSON.stringify(creativeData.object_story_spec, null, 2));
   if (!isVideo) {
     console.log("asset_feed_spec.images count:", (creativeData.asset_feed_spec as any)?.images?.length);
+    console.log("asset_customization_rules count:", (creativeData.asset_feed_spec as any)?.asset_customization_rules?.length);
   }
+  console.log("Request Body (Full):", JSON.stringify(creativeData, null, 2));
   console.log("===========================================");
 
   const response = await fetch(url, {
@@ -375,6 +381,11 @@ async function createAdCreative(
   }
 
   console.log("✅ Creative created successfully:", result.id);
+
+  // ⏱️ TIMING FIX: Meta 서버 동기화를 위한 1초 대기 (Serverless 환경)
+  console.log("⏳ Waiting 1 second for Meta server sync...");
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
   return result.id;
 }
 
@@ -467,10 +478,15 @@ async function createAd(
   // 🔍 DEBUG: Ad 생성 직전 데이터 확인
   console.log("============ AD CREATION DEBUG ============");
   console.log("Ad Name:", name);
+  console.log("Ad Account ID:", adAccountId);
   console.log("Adset ID:", adsetId);
   console.log("Creative ID:", creativeId);
   console.log("Is App:", isApp);
   console.log("App ID:", applicationId || "N/A");
+  console.log("Access Token (first 20 chars):", accessToken.substring(0, 20) + "...");
+  console.log("==========================================");
+  console.log("📤 Request Body (FULL):");
+  console.log(JSON.stringify(adData, null, 2));
   console.log("==========================================");
 
   const response = await fetch(url, {
@@ -479,7 +495,22 @@ async function createAd(
     body: JSON.stringify(adData),
   });
 
-  const result = await safeJsonParse(response, "Ad creation");
+  const responseText = await response.text();
+  console.log("📥 Meta API Response (Status: " + response.status + "):");
+  console.log(responseText);
+
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch (e) {
+    console.error("❌ Failed to parse response:", responseText);
+    throw new Error(`Ad creation failed: Invalid JSON response (${response.status})`);
+  }
+
+  if (result.error) {
+    console.error("❌ Meta API Error:", JSON.stringify(result.error, null, 2));
+    throw new Error(`Ad creation failed (${response.status}): ${JSON.stringify(result)}`);
+  }
 
   if (!result.id) {
     console.error("❌ Ad ID is missing in response:", JSON.stringify(result, null, 2));
@@ -538,12 +569,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 🔍 DEBUG: Instagram ID 확인
-    console.log("============ Instagram ID DEBUG ============");
+    // 🔍 DEBUG: 환경변수 및 설정 확인
+    console.log("============ ENVIRONMENT & CONFIG DEBUG ============");
     console.log("Client:", clientName);
+    console.log("Ad Account ID:", config.ad_account_id);
     console.log("Page ID:", config.page_id);
-    console.log("Instagram Actor ID:", config.instagram_actor_id);
-    console.log("===========================================");
+    console.log("Instagram Actor ID:", config.instagram_actor_id || "N/A");
+    console.log("Access Token (first 20):", config.access_token.substring(0, 20) + "...");
+    console.log("Target Campaigns:", config.target_campaigns);
+    console.log("Landing URL:", landingUrl);
+    console.log("Display URL:", displayUrl);
+    console.log("===================================================");
 
     const isVideo = type === "VA";
     const results: {
