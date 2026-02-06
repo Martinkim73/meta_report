@@ -9,10 +9,18 @@ const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
 export async function POST(request: NextRequest) {
   try {
-    const arrayBuffer = await request.arrayBuffer();
-    const { clientName, base64, filename, mediaType } = JSON.parse(
-      Buffer.from(arrayBuffer).toString("utf-8")
-    );
+    // FormData로 파일 수신 (Base64 인코딩 없음 - Vercel 4.5MB 제한 우회!)
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
+    const clientName = formData.get("clientName") as string;
+    const mediaType = formData.get("mediaType") as string;
+
+    if (!file || !clientName || !mediaType) {
+      return NextResponse.json(
+        { error: "Missing required fields: file, clientName, mediaType" },
+        { status: 400 }
+      );
+    }
 
     const config = await getClient(clientName);
     if (!config) {
@@ -26,32 +34,38 @@ export async function POST(request: NextRequest) {
     const accessToken = config.access_token;
 
     if (mediaType === "video") {
-      // Meta API는 영상을 FormData로 업로드해야 함
-      const videoBuffer = Buffer.from(base64, "base64");
+      // 비디오: FormData로 직접 Meta API에 전송
+      const videoBuffer = await file.arrayBuffer();
       const blob = new Blob([videoBuffer]);
 
-      const formData = new FormData();
-      formData.append("access_token", accessToken);
-      formData.append("title", filename);
-      formData.append("source", blob, filename);
+      const metaFormData = new FormData();
+      metaFormData.append("access_token", accessToken);
+      metaFormData.append("title", file.name);
+      metaFormData.append("source", blob, file.name);
 
       const response = await fetch(`${GRAPH_API_BASE}/${adAccountId}/advideos`, {
         method: "POST",
-        body: formData,
+        body: metaFormData,
       });
 
       const result = await safeJsonParse(response, "Video upload");
       return NextResponse.json({ videoId: result.id });
     }
 
-    // Image upload
+    // 이미지: Base64로 변환 후 Meta API에 전송 (Meta API 요구사항)
+    const imageBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(imageBuffer);
+    let binary = "";
+    bytes.forEach((b) => (binary += String.fromCharCode(b)));
+    const base64 = btoa(binary);
+
     const response = await fetch(`${GRAPH_API_BASE}/${adAccountId}/adimages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         access_token: accessToken,
         bytes: base64,
-        name: filename,
+        name: file.name,
       }),
     });
 

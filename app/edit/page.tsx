@@ -98,6 +98,7 @@ export default function EditPage() {
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>("");
 
   // 탭 (DA/VA)
   const [activeTab, setActiveTab] = useState<"DA" | "VA">("DA");
@@ -299,49 +300,57 @@ export default function EditPage() {
     }
 
     setIsSubmitting(true);
+    setUploadProgress("");
 
     try {
       const results = [];
+      const totalCreatives = creatives.length;
 
-      for (const creative of creatives) {
-        // Phase 1: 미디어 업로드
-        const mediaPayload = await Promise.all(
-          creative.media
-            .filter((m) => m.file)
-            .map(async (m) => {
-              const buffer = await m.file!.arrayBuffer();
-              const bytes = new Uint8Array(buffer);
-              let binary = "";
-              bytes.forEach((b) => (binary += String.fromCharCode(b)));
-              const base64 = btoa(binary);
+      for (let creativeIndex = 0; creativeIndex < creatives.length; creativeIndex++) {
+        const creative = creatives[creativeIndex];
+        const creativeNum = creativeIndex + 1;
 
-              const mediaType = activeTab === "VA" ? "video" : "image";
+        // Phase 1: 미디어 업로드 (순차적으로 한 번에 하나씩!)
+        setUploadProgress(`${creativeNum}번 소재: 미디어 업로드 중... (0/${creative.media.filter(m => m.file).length})`);
 
-              const res = await fetch("/api/upload-image", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  clientName: selectedClient,
-                  base64,
-                  filename: m.file!.name,
-                  mediaType,
-                }),
-              });
+        const mediaPayload = [];
+        const mediaFiles = creative.media.filter((m) => m.file);
 
-              const result = await res.json();
-              if (!res.ok) throw new Error(result.error || "업로드 실패");
+        for (let mediaIndex = 0; mediaIndex < mediaFiles.length; mediaIndex++) {
+          const m = mediaFiles[mediaIndex];
+          const mediaNum = mediaIndex + 1;
+          const mediaType = activeTab === "VA" ? "video" : "image";
 
-              return {
-                slot: m.label,
-                ratio: m.ratio,
-                mediaType,
-                hash: result.hash,
-                videoId: result.videoId,
-              };
-            })
-        );
+          setUploadProgress(
+            `${creativeNum}번 소재: ${mediaType === "video" ? "영상" : "이미지"} 업로드 중... (${mediaNum}/${mediaFiles.length}) - ${m.label}`
+          );
+
+          // FormData로 파일 직접 전송 (Vercel 4.5MB 제한 우회)
+          const formData = new FormData();
+          formData.append("file", m.file!);
+          formData.append("clientName", selectedClient);
+          formData.append("mediaType", mediaType);
+
+          const res = await fetch("/api/upload-image", {
+            method: "POST",
+            body: formData,  // Content-Type 자동 설정됨
+          });
+
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error || "업로드 실패");
+
+          mediaPayload.push({
+            slot: m.label,
+            ratio: m.ratio,
+            mediaType,
+            hash: result.hash,
+            videoId: result.videoId,
+          });
+        }
 
         // Phase 2: 광고 업데이트
+        setUploadProgress(`${creativeNum}번 소재: 광고 업데이트 중...`);
+
         const response = await fetch("/api/ads/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -356,9 +365,13 @@ export default function EditPage() {
         if (!response.ok) throw new Error(result.error || "업데이트 실패");
 
         results.push(result);
+        setUploadProgress(`${creativeNum}번 소재 완료! (${creativeNum}/${totalCreatives})`);
       }
 
-      alert(`${creatives.length}개 소재 교체 완료!`);
+      setUploadProgress("모든 소재 교체 완료! ✅");
+      setTimeout(() => {
+        alert(`${creatives.length}개 소재 교체 완료!`);
+      }, 500);
 
       // 초기화
       const slots = activeTab === "DA" ? DA_SLOTS : VA_SLOTS;
@@ -677,6 +690,16 @@ export default function EditPage() {
 
       {/* 하단 제출 버튼 */}
       <div className="sticky bottom-0 bg-background py-4 mt-6 border-t border-border">
+        {/* 진행 상태 표시 */}
+        {uploadProgress && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <p className="text-sm font-medium text-blue-800">{uploadProgress}</p>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted">{creatives.length}개 소재 준비됨</p>
           <button
