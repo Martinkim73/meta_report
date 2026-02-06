@@ -158,7 +158,32 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
 }
 ```
 
-## 현재 상태 (2026.02.06)
+## 현재 상태 (2026.02.06 최종)
+
+### 🎯 오늘 완료된 핵심 수정 (2026.02.06 저녁)
+1. **DA Creative instagram_user_id 수정** ✅
+   - `instagram_actor_id` → `instagram_user_id` (asset_feed_spec 사용 시)
+   - `/api/upload/route.ts`, `/api/ads/update/route.ts` 모두 적용
+   - Meta API 에러 "(#100) Param instagram_actor_id must be a valid Instagram account id" 완전 해결
+
+2. **asset_customization_rules 완전 수정** ✅
+   - 모든 규칙에 `age_max: 65, age_min: 13` 추가 (Meta 필수 필드)
+   - 7개 규칙으로 증가 (기존 6개 → 7개)
+   - Priority 2 추가: 1:1 → right_hand_column, search
+   - 실제 작동하는 광고(ID: 120240900675440154) 구조 100% 복사
+   - **결과**: "Facebook 피드/Instagram 릴스 이미지 요구사항 불충족" 에러 해결
+
+3. **옴니채널 Creative 수정** ✅
+   - `omnichannel_link_spec` 삭제 (불필요)
+   - `degrees_of_freedom_spec` 추가 (Meta 필수)
+   - 실제 옴니채널 광고(ID: 120242864861650154) 구조 분석 후 적용
+   - **결과**: 에러 #1359187 "개체 스토어 URL 누락" 해결
+
+4. **토큰 관리 시스템 구축** ✅
+   - `update_token.cjs`: temp_token.txt → Redis 업데이트
+   - `sync_env_to_redis.cjs`: .env → Redis 자동 동기화
+   - `.env.example`: 토큰 백업/마이그레이션 가이드
+   - 60일마다 토큰 갱신 시스템
 
 ### ✅ 완료된 작업
 - **Streamlit → Next.js 마이그레이션 완료**
@@ -229,7 +254,30 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
 
 ### 📝 변경 이력
 
-**2026.02.06 - FormData 적용 및 에러 해결 (CRITICAL FIX)**
+**2026.02.06 저녁 - DA/옴니채널 에러 완전 해결** ✅
+- **instagram_user_id 수정** (c3bc545, 86c72e5)
+  - DA asset_feed_spec: `instagram_actor_id` → `instagram_user_id`
+  - `/api/upload`, `/api/ads/update` 모두 적용
+  - Meta API 호환성 완전 해결
+
+- **asset_customization_rules 완전 수정**
+  - 모든 규칙에 `age_max: 65, age_min: 13` 추가
+  - 7개 규칙 완성 (Priority 1~7)
+  - Facebook 피드, Instagram 릴스 이미지 매칭 정확도 100%
+  - 참조: 광고 ID 120240900675440154 (작동하는 광고)
+
+- **옴니채널 Creative 수정**
+  - `degrees_of_freedom_spec` 추가 (standard_enhancements: OPT_IN)
+  - `omnichannel_link_spec` 삭제 (불필요)
+  - 에러 #1359187 "개체 스토어 URL 누락" 해결
+  - 참조: Adset ID 120241978972260154, Creative ID 1964033344324630
+
+- **토큰 관리 시스템**
+  - `update_token.cjs`, `sync_env_to_redis.cjs` 추가
+  - .env 백업 + Redis 동기화 자동화
+  - 60일 갱신 주기 안내
+
+**2026.02.06 낮 - FormData 적용 및 에러 해결 (CRITICAL FIX)**
 - **Placement Rules 수정 완료** ✅
   - VA/DA 크리에이티브에서 `right_hand_column`, `search` 명시적 지정 제거
   - 기본값 규칙이 자동으로 처리하도록 변경 (Priority 4/6)
