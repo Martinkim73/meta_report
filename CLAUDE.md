@@ -77,14 +77,20 @@ npm start
 
 ### 환경 변수 (Vercel Dashboard 설정 완료)
 ```env
-# Upstash Redis KV
-KV_REST_API_URL=https://talented-muskox-39764.upstash.io
-KV_REST_API_TOKEN=AZtUAAIncDI0YWY2ZDZiOWFjYmE0NDhiOGRhZWE2ZGZhMzM0ODhjMXAyMzk3NjQ
+# Upstash Redis KV (필수)
+KV_REST_API_URL=https://your-redis.upstash.io
+KV_REST_API_TOKEN=your_redis_token_here
 
 # TODO: 추가 예정
 # Discord
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
+
+⚠️ **보안 주의사항:**
+- **절대 실제 토큰을 Git에 커밋하지 마세요!**
+- 로컬: `.env` 파일에 저장 (gitignore됨)
+- Vercel: Dashboard에서 환경변수 설정
+- 토큰 유출 시 즉시 재발급 필요
 
 ### Vercel CLI (선택사항)
 ```bash

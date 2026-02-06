@@ -3,10 +3,20 @@
 
 const fs = require('fs');
 const https = require('https');
+require('dotenv').config();
 
-const REDIS_URL = 'https://talented-muskox-39764.upstash.io';
-const REDIS_TOKEN = 'AZtUAAIncDI0YWY2ZDZiOWFjYmE0NDhiOGRhZWE2ZGZhMzM0ODhjMXAyMzk3NjQ';
+const REDIS_URL = process.env.KV_REST_API_URL;
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN;
 const CLIENT_NAME = 'AI코딩밸리';
+
+// 환경변수 확인
+if (!REDIS_URL || !REDIS_TOKEN) {
+  console.error('❌ 환경변수가 설정되지 않았습니다!');
+  console.log('💡 .env 파일에 다음을 추가하세요:');
+  console.log('   KV_REST_API_URL=https://...');
+  console.log('   KV_REST_API_TOKEN=...');
+  process.exit(1);
+}
 
 async function updateToken() {
   try {
