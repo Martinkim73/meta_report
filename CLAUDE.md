@@ -69,6 +69,24 @@ npm start
 ```
 
 ## Vercel 배포
+
+### 프로덕션 URL
+- **배포 완료**: https://meta-report-nine.vercel.app/
+- **GitHub 연동**: 완료 (main 브랜치 자동 배포)
+- Git push 시 자동으로 Vercel에 배포됨
+
+### 환경 변수 (Vercel Dashboard 설정 완료)
+```env
+# Upstash Redis KV
+KV_REST_API_URL=https://talented-muskox-39764.upstash.io
+KV_REST_API_TOKEN=AZtUAAIncDI0YWY2ZDZiOWFjYmE0NDhiOGRhZWE2ZGZhMzM0ODhjMXAyMzk3NjQ
+
+# TODO: 추가 예정
+# Discord
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+```
+
+### Vercel CLI (선택사항)
 ```bash
 # Vercel CLI 설치
 npm i -g vercel
@@ -78,16 +96,6 @@ vercel
 
 # 프로덕션 배포
 vercel --prod
-```
-
-### 환경 변수 (Vercel Dashboard)
-```env
-# Meta API (TODO: 구현 시 추가)
-META_ACCESS_TOKEN=your_token
-META_AD_ACCOUNT_ID=act_xxxx
-
-# Discord
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
 ## Meta 광고 지면별 이미지 비율 규칙 (필수)
