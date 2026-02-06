@@ -354,15 +354,10 @@ async function createNewCreative(
     page_id: config.page_id,
   };
 
-  // Instagram ID 포함 (DA는 instagram_actor_id, VA는 instagram_user_id)
+  // Instagram ID 포함 (DA와 VA 모두 instagram_user_id 사용)
   if (config.instagram_actor_id) {
-    if (isVideo) {
-      // VA 영상: instagram_user_id 사용
-      objectStorySpec.instagram_user_id = config.instagram_actor_id;
-    } else {
-      // DA 이미지: instagram_actor_id 사용
-      objectStorySpec.instagram_actor_id = config.instagram_actor_id;
-    }
+    // asset_feed_spec 사용 시 instagram_user_id 필요 (DA/VA 공통)
+    objectStorySpec.instagram_user_id = config.instagram_actor_id;
   }
 
   const creativeData: Record<string, unknown> = {

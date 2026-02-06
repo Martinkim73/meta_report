@@ -21,9 +21,10 @@ secrets.json
 clients.json
 .streamlit/secrets.toml
 
-# Test images
+# Test images & error screenshots
 test_image/
 test image/
+error/
 
 # IDE
 .vscode/

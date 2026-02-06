@@ -215,14 +215,16 @@ async function createAdCreative(
       throw new Error("No image hashes available");
     }
 
-    // asset_customization_rules 생성
+    // asset_customization_rules 생성 (실제 작동하는 광고와 100% 동일)
     const assetCustomizationRules: Record<string, unknown>[] = [];
     let priority = 1;
 
-    // Rule 1: 9:16 → story, ig_search, profile_reels (messenger, audience_network 포함)
+    // Rule 1: 9:16 → story (facebook, instagram, messenger, audience_network)
     if (labelMap["9x16"]) {
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65,
+          age_min: 13,
           publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
           facebook_positions: ["story"],
           instagram_positions: ["ig_search", "profile_reels", "story"],
@@ -234,10 +236,26 @@ async function createAdCreative(
       });
     }
 
-    // Rule 2: 4:5 → facebook feed만
+    // Rule 2: 1:1 → right_hand_column, search (facebook)
+    if (labelMap["1x1"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          age_max: 65,
+          age_min: 13,
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["right_hand_column", "search"],
+        },
+        image_label: { name: labelMap["1x1"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 3: 4:5 → facebook feed
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65,
+          age_min: 13,
           publisher_platforms: ["facebook"],
           facebook_positions: ["feed"],
         },
@@ -246,10 +264,12 @@ async function createAdCreative(
       });
     }
 
-    // Rule 3: 4:5 → instagram stream (피드)만
+    // Rule 4: 4:5 → instagram stream (피드)
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65,
+          age_min: 13,
           publisher_platforms: ["instagram"],
           instagram_positions: ["stream"],
         },
@@ -258,10 +278,12 @@ async function createAdCreative(
       });
     }
 
-    // Rule 4: 9:16 Reels → instagram reels
+    // Rule 5: 9:16 Reels → instagram reels
     if (labelMap["9x16reels"]) {
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65,
+          age_min: 13,
           publisher_platforms: ["instagram"],
           instagram_positions: ["reels"],
         },
@@ -270,10 +292,12 @@ async function createAdCreative(
       });
     }
 
-    // Rule 5: 9:16 Reels → facebook_reels
+    // Rule 6: 9:16 Reels → facebook_reels
     if (labelMap["9x16reels"]) {
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65,
+          age_min: 13,
           publisher_platforms: ["facebook"],
           facebook_positions: ["facebook_reels"],
         },
@@ -282,10 +306,13 @@ async function createAdCreative(
       });
     }
 
-    // Rule 6: 1:1 → 기본값 (placement 지정 없음! right_hand_column, search는 자동 처리)
+    // Rule 7: 1:1 → 기본값 (나머지 모든 지면)
     if (labelMap["1x1"]) {
       assetCustomizationRules.push({
-        customization_spec: {},
+        customization_spec: {
+          age_max: 65,
+          age_min: 13,
+        },
         image_label: { name: labelMap["1x1"] },
         priority: priority++,
       });
@@ -296,7 +323,7 @@ async function createAdCreative(
       name: creative.name,
       object_story_spec: {
         page_id: config.page_id,
-        ...(config.instagram_actor_id && { instagram_actor_id: config.instagram_actor_id }),
+        ...(config.instagram_actor_id && { instagram_user_id: config.instagram_actor_id }),
       },
       asset_feed_spec: {
         images,
@@ -327,6 +354,16 @@ async function createAdCreative(
       android: omnichannel.android,
     };
   }
+
+  // 🔍 DEBUG: Creative 생성 직전 데이터 확인
+  console.log("============ CREATIVE DATA DEBUG ============");
+  console.log("Creative Name:", creative.name);
+  console.log("Is Video:", isVideo);
+  console.log("object_story_spec:", JSON.stringify(creativeData.object_story_spec, null, 2));
+  if (!isVideo) {
+    console.log("asset_feed_spec.images count:", (creativeData.asset_feed_spec as any)?.images?.length);
+  }
+  console.log("===========================================");
 
   const response = await fetch(url, {
     method: "POST",
@@ -476,6 +513,13 @@ export async function POST(request: NextRequest) {
         config.instagram_actor_id = igId;
       }
     }
+
+    // 🔍 DEBUG: Instagram ID 확인
+    console.log("============ Instagram ID DEBUG ============");
+    console.log("Client:", clientName);
+    console.log("Page ID:", config.page_id);
+    console.log("Instagram Actor ID:", config.instagram_actor_id);
+    console.log("===========================================");
 
     const isVideo = type === "VA";
     const results: {
