@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/redis";
+import { safeJsonParse } from "@/lib/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -39,12 +40,7 @@ export async function POST(request: NextRequest) {
         body: formData,
       });
 
-      const result = await response.json();
-      if (result.error) {
-        console.error("Video upload error:", result.error);
-        throw new Error(result.error.error_user_msg || result.error.message || "Video upload failed");
-      }
-
+      const result = await safeJsonParse(response, "Video upload");
       return NextResponse.json({ videoId: result.id });
     }
 
@@ -58,11 +54,8 @@ export async function POST(request: NextRequest) {
         name: filename,
       }),
     });
-    const result = await response.json();
-    if (result.error) {
-      throw new Error(result.error.error_user_msg || result.error.message);
-    }
 
+    const result = await safeJsonParse(response, "Image upload");
     const images = result.images;
     if (!images) throw new Error("No image data in response");
     const imageData = Object.values(images)[0] as { hash: string; url: string };
