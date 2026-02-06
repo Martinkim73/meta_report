@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, ClientConfig } from "@/lib/redis";
+import { safeJsonParse } from "@/lib/api-helpers";
 
 export const runtime = "nodejs";
 
@@ -333,13 +334,7 @@ async function createAdCreative(
     body: JSON.stringify(creativeData),
   });
 
-  const result = await response.json();
-
-  if (result.error) {
-    const errorDetail = result.error.error_user_msg || result.error.message;
-    throw new Error(`Creative creation failed: ${errorDetail} (code: ${result.error.code}, subcode: ${result.error.error_subcode || 'none'})`);
-  }
-
+  const result = await safeJsonParse(response, "Creative creation");
   return result.id;
 }
 
@@ -430,13 +425,7 @@ async function createAd(
     body: JSON.stringify(adData),
   });
 
-  const result = await response.json();
-
-  if (result.error) {
-    const errorDetail = result.error.error_user_msg || result.error.message;
-    throw new Error(`Ad creation failed: ${errorDetail} (code: ${result.error.code}, subcode: ${result.error.error_subcode || 'none'})`);
-  }
-
+  const result = await safeJsonParse(response, "Ad creation");
   return result.id;
 }
 
