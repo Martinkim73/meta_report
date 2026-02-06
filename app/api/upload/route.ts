@@ -367,6 +367,14 @@ async function createAdCreative(
   });
 
   const result = await safeJsonParse(response, "Creative creation");
+
+  // 🔒 SAFETY: Creative ID 검증
+  if (!result.id) {
+    console.error("❌ Creative ID is missing in response:", JSON.stringify(result, null, 2));
+    throw new Error("Creative creation failed: No ID returned");
+  }
+
+  console.log("✅ Creative created successfully:", result.id);
   return result.id;
 }
 
@@ -427,6 +435,11 @@ async function createAd(
   isApp: boolean = false,
   applicationId?: string
 ): Promise<string> {
+  // 🔒 SAFETY: Creative ID 검증
+  if (!creativeId || creativeId.trim() === "") {
+    throw new Error("Cannot create Ad: Creative ID is empty");
+  }
+
   const url = `${GRAPH_API_BASE}/${adAccountId}/ads`;
 
   const adData: Record<string, unknown> = {
@@ -451,6 +464,15 @@ async function createAd(
     ];
   }
 
+  // 🔍 DEBUG: Ad 생성 직전 데이터 확인
+  console.log("============ AD CREATION DEBUG ============");
+  console.log("Ad Name:", name);
+  console.log("Adset ID:", adsetId);
+  console.log("Creative ID:", creativeId);
+  console.log("Is App:", isApp);
+  console.log("App ID:", applicationId || "N/A");
+  console.log("==========================================");
+
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -458,6 +480,13 @@ async function createAd(
   });
 
   const result = await safeJsonParse(response, "Ad creation");
+
+  if (!result.id) {
+    console.error("❌ Ad ID is missing in response:", JSON.stringify(result, null, 2));
+    throw new Error("Ad creation failed: No ID returned");
+  }
+
+  console.log("✅ Ad created successfully:", result.id);
   return result.id;
 }
 
