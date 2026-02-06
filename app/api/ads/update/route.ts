@@ -17,6 +17,7 @@ const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
 interface MediaUpload {
   slot: string;
   ratio: string;
+  mediaType: "image" | "video";
   hash?: string;
   videoId?: string;
 }
@@ -151,11 +152,17 @@ async function createNewCreative(
   const websiteUrl = generateUtmUrl(name, adsetName, landingUrl);
   const timestamp = Date.now();
 
-  // 모든 이미지 추가 + 슬롯별 매핑
+  // 이미지와 영상 분리
   const images: { hash: string; adlabels: { name: string }[] }[] = [];
+  const videos: { video_id: string }[] = [];
   const labelMap: Record<string, string> = {};
 
   media.forEach((m, idx) => {
+    if (m.mediaType === "video" && m.videoId) {
+      videos.push({ video_id: m.videoId });
+      return;
+    }
+
     if (!m.hash) return;
 
     const slotType =
@@ -177,8 +184,8 @@ async function createNewCreative(
     labelMap[slotType] = label;
   });
 
-  if (images.length === 0) {
-    throw new Error("No image hashes available");
+  if (images.length === 0 && videos.length === 0) {
+    throw new Error("이미지 또는 영상이 필요합니다");
   }
 
   // asset_customization_rules 생성
@@ -277,7 +284,8 @@ async function createNewCreative(
       ...(config.instagram_actor_id && { instagram_actor_id: config.instagram_actor_id }),
     },
     asset_feed_spec: {
-      images,
+      ...(images.length > 0 && { images }),
+      ...(videos.length > 0 && { videos }),
       bodies: [{ text: body }],
       titles: [{ text: title }],
       descriptions: [{ text: description }],

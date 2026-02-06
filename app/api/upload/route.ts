@@ -9,6 +9,7 @@ const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 interface MediaUpload {
   slot: string;
   ratio: string;
+  mediaType: "image" | "video";
   hash?: string;
   videoId?: string;
 }

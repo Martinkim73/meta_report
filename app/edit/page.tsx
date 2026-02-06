@@ -31,15 +31,17 @@ interface Adset {
 interface MediaSlot {
   label: string;
   ratio: string;
+  mediaType: "image" | "video";
   file: File | null;
   preview: string | null;
 }
 
-const DA_MEDIA_SLOTS = [
-  { label: "피드 이미지", ratio: "4:5", keywords: ["4x5", "4_5", "feed", "피드"] },
-  { label: "스토리 이미지", ratio: "9:16", keywords: ["9x16", "9_16", "story", "스토리"] },
-  { label: "릴스 이미지", ratio: "9:16", keywords: ["reel", "릴스"] },
-  { label: "기본 이미지", ratio: "1:1", keywords: ["1x1", "1_1", "square", "기본", "default"] },
+const MEDIA_SLOTS = [
+  { label: "피드 이미지", ratio: "4:5", mediaType: "image" as const, keywords: ["4x5", "4_5", "feed", "피드"] },
+  { label: "스토리 이미지", ratio: "9:16", mediaType: "image" as const, keywords: ["9x16", "9_16", "story", "스토리"] },
+  { label: "릴스 이미지", ratio: "9:16", mediaType: "image" as const, keywords: ["reel", "릴스"] },
+  { label: "기본 이미지", ratio: "1:1", mediaType: "image" as const, keywords: ["1x1", "1_1", "square", "기본", "default"] },
+  { label: "영상", ratio: "9:16", mediaType: "video" as const, keywords: ["video", "영상", "mp4", "mov"] },
 ];
 
 function getImageAspectRatio(file: File): Promise<number> {
@@ -56,6 +58,11 @@ function getImageAspectRatio(file: File): Promise<number> {
 
 async function detectSlotIndex(file: File): Promise<number> {
   const filename = file.name.toLowerCase();
+  const isVideo = file.type.startsWith("video/");
+
+  // 영상이면 마지막 슬롯 (index 4)
+  if (isVideo) return 4;
+
   const ratio = await getImageAspectRatio(file);
 
   // 비율로 매칭
@@ -87,9 +94,9 @@ export default function EditPage() {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 새 이미지
+  // 새 미디어 (이미지 + 영상)
   const [media, setMedia] = useState<MediaSlot[]>(
-    DA_MEDIA_SLOTS.map((s) => ({ label: s.label, ratio: s.ratio, file: null, preview: null }))
+    MEDIA_SLOTS.map((s) => ({ label: s.label, ratio: s.ratio, mediaType: s.mediaType, file: null, preview: null }))
   );
   const dropRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -208,14 +215,14 @@ export default function EditPage() {
       return;
     }
     if (filledCount === 0) {
-      alert("새 이미지를 업로드해주세요");
+      alert("새 이미지 또는 영상을 업로드해주세요");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Phase 1: 이미지 업로드
+      // Phase 1: 미디어 업로드 (이미지 + 영상)
       const mediaPayload = await Promise.all(
         media
           .filter((m) => m.file)
@@ -233,17 +240,19 @@ export default function EditPage() {
                 clientName: selectedClient,
                 base64,
                 filename: m.file!.name,
-                mediaType: "image",
+                mediaType: m.mediaType,
               }),
             });
 
             const result = await res.json();
-            if (!res.ok) throw new Error(result.error || "이미지 업로드 실패");
+            if (!res.ok) throw new Error(result.error || `${m.mediaType === "video" ? "영상" : "이미지"} 업로드 실패`);
 
             return {
               slot: m.label,
               ratio: m.ratio,
+              mediaType: m.mediaType,
               hash: result.hash,
+              videoId: result.videoId,
             };
           })
       );
@@ -266,7 +275,7 @@ export default function EditPage() {
 
       // 성공 후 초기화
       setSelectedAdIds([]);
-      setMedia(DA_MEDIA_SLOTS.map((s) => ({ label: s.label, ratio: s.ratio, file: null, preview: null })));
+      setMedia(MEDIA_SLOTS.map((s) => ({ label: s.label, ratio: s.ratio, mediaType: s.mediaType, file: null, preview: null })));
 
       // 광고 목록 새로고침
       if (selectedAdsetId) {
@@ -422,9 +431,9 @@ export default function EditPage() {
           )}
         </div>
 
-        {/* 오른쪽: 새 이미지 업로드 */}
+        {/* 오른쪽: 새 미디어 업로드 */}
         <div className="toss-card">
-          <h2 className="font-bold mb-4">새 이미지 ({filledCount}/4)</h2>
+          <h2 className="font-bold mb-4">새 미디어 ({filledCount}/5)</h2>
 
           {/* 드래그앤드롭 */}
           <div
@@ -440,20 +449,20 @@ export default function EditPage() {
             <input
               ref={inputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
               className="hidden"
               onChange={(e) => e.target.files && handleMultipleFiles(e.target.files)}
             />
             <div className="text-center py-2">
-              <div className="text-2xl mb-1">🖼</div>
-              <p className="text-sm font-medium">이미지를 드래그하거나 클릭</p>
+              <div className="text-2xl mb-1">🖼️🎬</div>
+              <p className="text-sm font-medium">이미지/영상을 드래그하거나 클릭</p>
               <p className="text-xs text-muted">비율/파일명으로 자동 분류</p>
             </div>
           </div>
 
-          {/* 이미지 슬롯 */}
-          <div className="grid grid-cols-4 gap-2">
+          {/* 미디어 슬롯 */}
+          <div className="grid grid-cols-5 gap-2">
             {media.map((slot, i) => (
               <div
                 key={i}
@@ -464,12 +473,21 @@ export default function EditPage() {
                 <div className="relative bg-gray-100" style={{ paddingBottom: "125%" }}>
                   {slot.preview ? (
                     <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={slot.preview}
-                        alt={slot.label}
-                        className="absolute inset-0 w-full h-full object-contain bg-gray-900"
-                      />
+                      {slot.mediaType === "video" ? (
+                        <video
+                          src={slot.preview}
+                          className="absolute inset-0 w-full h-full object-contain bg-gray-900"
+                          controls={false}
+                          muted
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={slot.preview}
+                          alt={slot.label}
+                          className="absolute inset-0 w-full h-full object-contain bg-gray-900"
+                        />
+                      )}
                       <button
                         type="button"
                         className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs"
@@ -480,7 +498,7 @@ export default function EditPage() {
                     </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xl opacity-30">🖼</span>
+                      <span className="text-xl opacity-30">{slot.mediaType === "video" ? "🎬" : "🖼"}</span>
                     </div>
                   )}
                 </div>
@@ -498,7 +516,7 @@ export default function EditPage() {
       <div className="sticky bottom-0 bg-background py-4 mt-6 border-t border-border">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted">
-            {selectedAdIds.length}개 광고 선택됨 · {filledCount}개 이미지 준비됨
+            {selectedAdIds.length}개 광고 선택됨 · {filledCount}개 미디어 준비됨
           </p>
           <button
             type="button"
@@ -510,7 +528,7 @@ export default function EditPage() {
                 : "bg-gray-100 text-muted cursor-not-allowed"
             }`}
           >
-            {isSubmitting ? "수정 중..." : `${selectedAdIds.length}개 광고 이미지 교체`}
+            {isSubmitting ? "수정 중..." : `${selectedAdIds.length}개 광고 소재 교체`}
           </button>
         </div>
       </div>
