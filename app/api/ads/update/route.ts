@@ -154,21 +154,43 @@ async function createNewCreative(
 
   // 이미지와 영상 분리
   const images: { hash: string; adlabels: { name: string }[] }[] = [];
-  const videos: { video_id: string }[] = [];
+  const videos: { video_id: string; adlabels: { name: string }[] }[] = [];
   const labelMap: Record<string, string> = {};
+  const isVideo = media.some((m) => m.mediaType === "video");
 
   media.forEach((m, idx) => {
     if (m.mediaType === "video" && m.videoId) {
-      videos.push({ video_id: m.videoId });
+      // VA: 영상도 placement별 매핑
+      const slotType =
+        m.slot === "4:5 피드" ? "4x5"
+        : m.slot === "9:16 스토리/릴스" ? "9x16"
+        : m.slot === "1:1 기본" ? "1x1"
+        : `video${idx}`;
+
+      const label = `placement_asset_${slotType}_${timestamp}`;
+
+      const existing = videos.find((v) => v.video_id === m.videoId);
+      if (existing) {
+        existing.adlabels.push({ name: label });
+      } else {
+        videos.push({ video_id: m.videoId, adlabels: [{ name: label }] });
+      }
+
+      labelMap[slotType] = label;
       return;
     }
 
     if (!m.hash) return;
 
+    // DA: 이미지
     const slotType =
-      m.slot === "피드 이미지" ? "4x5"
+      m.slot === "4:5 피드" ? "4x5"
+      : m.slot === "피드 이미지" ? "4x5"
+      : m.slot === "9:16 스토리" ? "9x16"
       : m.slot === "스토리 이미지" ? "9x16"
+      : m.slot === "9:16 릴스" ? "9x16reels"
       : m.slot === "릴스 이미지" ? "9x16reels"
+      : m.slot === "1:1 기본" ? "1x1"
       : m.slot === "기본 이미지" ? "1x1"
       : `img${idx}`;
 
@@ -191,89 +213,154 @@ async function createNewCreative(
   // asset_customization_rules 생성
   const assetCustomizationRules: Record<string, unknown>[] = [];
   let priority = 1;
+  const assetLabelKey = isVideo ? "video_label" : "image_label";
 
-  // Rule 1: 9:16 → story, ig_search, profile_reels
-  if (labelMap["9x16"]) {
-    assetCustomizationRules.push({
-      customization_spec: {
-        publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
-        facebook_positions: ["story"],
-        instagram_positions: ["ig_search", "profile_reels", "story"],
-        messenger_positions: ["story"],
-        audience_network_positions: ["classic"],
-      },
-      image_label: { name: labelMap["9x16"] },
-      priority: priority++,
-    });
-  }
+  if (isVideo) {
+    // VA 영상 규칙
+    // Rule 1: 9:16 → 스토리, 릴스 (모든 플랫폼)
+    if (labelMap["9x16"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
+          facebook_positions: ["story", "facebook_reels"],
+          instagram_positions: ["story", "reels", "ig_search", "profile_reels"],
+          messenger_positions: ["story"],
+          audience_network_positions: ["classic"],
+        },
+        [assetLabelKey]: { name: labelMap["9x16"] },
+        priority: priority++,
+      });
+    }
 
-  // Rule 2: 1:1 → right_hand_column, search
-  if (labelMap["1x1"]) {
-    assetCustomizationRules.push({
-      customization_spec: {
-        publisher_platforms: ["facebook"],
-        facebook_positions: ["right_hand_column", "search"],
-      },
-      image_label: { name: labelMap["1x1"] },
-      priority: priority++,
-    });
-  }
+    // Rule 2: 1:1 → right_hand_column, search
+    if (labelMap["1x1"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["right_hand_column", "search"],
+        },
+        [assetLabelKey]: { name: labelMap["1x1"] },
+        priority: priority++,
+      });
+    }
 
-  // Rule 3: 4:5 → facebook feed
-  if (labelMap["4x5"]) {
-    assetCustomizationRules.push({
-      customization_spec: {
-        publisher_platforms: ["facebook"],
-        facebook_positions: ["feed"],
-      },
-      image_label: { name: labelMap["4x5"] },
-      priority: priority++,
-    });
-  }
+    // Rule 3: 4:5 → facebook feed
+    if (labelMap["4x5"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["feed"],
+        },
+        [assetLabelKey]: { name: labelMap["4x5"] },
+        priority: priority++,
+      });
+    }
 
-  // Rule 4: 4:5 → instagram stream (피드)
-  if (labelMap["4x5"]) {
-    assetCustomizationRules.push({
-      customization_spec: {
-        publisher_platforms: ["instagram"],
-        instagram_positions: ["stream"],
-      },
-      image_label: { name: labelMap["4x5"] },
-      priority: priority++,
-    });
-  }
+    // Rule 4: 4:5 → instagram stream (피드)
+    if (labelMap["4x5"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["instagram"],
+          instagram_positions: ["stream"],
+        },
+        [assetLabelKey]: { name: labelMap["4x5"] },
+        priority: priority++,
+      });
+    }
 
-  // Rule 5: 9:16 Reels → instagram reels
-  if (labelMap["9x16reels"]) {
-    assetCustomizationRules.push({
-      customization_spec: {
-        publisher_platforms: ["instagram"],
-        instagram_positions: ["reels"],
-      },
-      image_label: { name: labelMap["9x16reels"] },
-      priority: priority++,
-    });
-  }
+    // Rule 5: 1:1 → 기본값
+    if (labelMap["1x1"]) {
+      assetCustomizationRules.push({
+        customization_spec: {},
+        [assetLabelKey]: { name: labelMap["1x1"] },
+        priority: priority++,
+      });
+    }
+  } else {
+    // DA 이미지 규칙
+    // Rule 1: 9:16 → story, ig_search, profile_reels
+    if (labelMap["9x16"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
+          facebook_positions: ["story"],
+          instagram_positions: ["ig_search", "profile_reels", "story"],
+          messenger_positions: ["story"],
+          audience_network_positions: ["classic"],
+        },
+        [assetLabelKey]: { name: labelMap["9x16"] },
+        priority: priority++,
+      });
+    }
 
-  // Rule 6: 9:16 Reels → facebook_reels
-  if (labelMap["9x16reels"]) {
-    assetCustomizationRules.push({
-      customization_spec: {
-        publisher_platforms: ["facebook"],
-        facebook_positions: ["facebook_reels"],
-      },
-      image_label: { name: labelMap["9x16reels"] },
-      priority: priority++,
-    });
-  }
+    // Rule 2: 1:1 → right_hand_column, search
+    if (labelMap["1x1"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["right_hand_column", "search"],
+        },
+        [assetLabelKey]: { name: labelMap["1x1"] },
+        priority: priority++,
+      });
+    }
 
-  // Rule 7: 1:1 → 기본값
-  if (labelMap["1x1"]) {
-    assetCustomizationRules.push({
-      customization_spec: {},
-      image_label: { name: labelMap["1x1"] },
-      priority: priority++,
-    });
+    // Rule 3: 4:5 → facebook feed
+    if (labelMap["4x5"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["feed"],
+        },
+        [assetLabelKey]: { name: labelMap["4x5"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 4: 4:5 → instagram stream (피드)
+    if (labelMap["4x5"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["instagram"],
+          instagram_positions: ["stream"],
+        },
+        [assetLabelKey]: { name: labelMap["4x5"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 5: 9:16 Reels → instagram reels
+    if (labelMap["9x16reels"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["instagram"],
+          instagram_positions: ["reels"],
+        },
+        [assetLabelKey]: { name: labelMap["9x16reels"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 6: 9:16 Reels → facebook_reels
+    if (labelMap["9x16reels"]) {
+      assetCustomizationRules.push({
+        customization_spec: {
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["facebook_reels"],
+        },
+        [assetLabelKey]: { name: labelMap["9x16reels"] },
+        priority: priority++,
+      });
+    }
+
+    // Rule 7: 1:1 → 기본값
+    if (labelMap["1x1"]) {
+      assetCustomizationRules.push({
+        customization_spec: {},
+        [assetLabelKey]: { name: labelMap["1x1"] },
+        priority: priority++,
+      });
+    }
   }
 
   const creativeData: Record<string, unknown> = {

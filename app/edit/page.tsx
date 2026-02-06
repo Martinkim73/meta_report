@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-interface Creative {
+interface AdCreative {
   id: string;
   name: string;
   thumbnailUrl?: string;
@@ -13,7 +13,7 @@ interface Ad {
   name: string;
   status: string;
   adsetId: string;
-  creative: Creative | null;
+  creative: AdCreative | null;
 }
 
 interface Campaign {
@@ -31,53 +31,58 @@ interface Adset {
 interface MediaSlot {
   label: string;
   ratio: string;
-  mediaType: "image" | "video";
   file: File | null;
   preview: string | null;
 }
 
-const MEDIA_SLOTS = [
-  { label: "피드 이미지", ratio: "4:5", mediaType: "image" as const, keywords: ["4x5", "4_5", "feed", "피드"] },
-  { label: "스토리 이미지", ratio: "9:16", mediaType: "image" as const, keywords: ["9x16", "9_16", "story", "스토리"] },
-  { label: "릴스 이미지", ratio: "9:16", mediaType: "image" as const, keywords: ["reel", "릴스"] },
-  { label: "기본 이미지", ratio: "1:1", mediaType: "image" as const, keywords: ["1x1", "1_1", "square", "기본", "default"] },
-  { label: "영상", ratio: "9:16", mediaType: "video" as const, keywords: ["video", "영상", "mp4", "mov"] },
+interface Creative {
+  id: string; // 임시 ID
+  adId: string; // 교체할 광고 ID
+  media: MediaSlot[];
+}
+
+const DA_SLOTS = [
+  { label: "4:5 피드", ratio: "4:5" },
+  { label: "9:16 스토리", ratio: "9:16" },
+  { label: "9:16 릴스", ratio: "9:16" },
+  { label: "1:1 기본", ratio: "1:1" },
+];
+
+const VA_SLOTS = [
+  { label: "4:5 피드", ratio: "4:5" },
+  { label: "9:16 스토리/릴스", ratio: "9:16" },
+  { label: "1:1 기본", ratio: "1:1" },
 ];
 
 function getImageAspectRatio(file: File): Promise<number> {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve(img.width / img.height);
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = () => resolve(1);
-    img.src = URL.createObjectURL(file);
+    if (file.type.startsWith("video/")) {
+      const video = document.createElement("video");
+      video.onloadedmetadata = () => {
+        resolve(video.videoWidth / video.videoHeight);
+        URL.revokeObjectURL(video.src);
+      };
+      video.onerror = () => resolve(1);
+      video.src = URL.createObjectURL(file);
+    } else {
+      const img = new Image();
+      img.onload = () => {
+        resolve(img.width / img.height);
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => resolve(1);
+      img.src = URL.createObjectURL(file);
+    }
   });
 }
 
-async function detectSlotIndex(file: File): Promise<number> {
-  const filename = file.name.toLowerCase();
-  const isVideo = file.type.startsWith("video/");
-
-  // 영상이면 마지막 슬롯 (index 4)
-  if (isVideo) return 4;
-
+async function detectSlotIndex(file: File, slots: typeof DA_SLOTS | typeof VA_SLOTS): Promise<number> {
   const ratio = await getImageAspectRatio(file);
 
   // 비율로 매칭
   if (ratio >= 0.75 && ratio <= 0.85) return 0; // 4:5
-  if (ratio >= 0.5 && ratio <= 0.65) {
-    const isReels = filename.includes("reel") || filename.includes("릴스");
-    return isReels ? 2 : 1; // 릴스 or 스토리
-  }
-  if (ratio >= 0.95 && ratio <= 1.05) return 3; // 1:1
-
-  // 파일명으로 매칭
-  if (filename.includes("4x5") || filename.includes("feed")) return 0;
-  if (filename.includes("reel") || filename.includes("릴스")) return 2;
-  if (filename.includes("9x16") || filename.includes("story")) return 1;
-  if (filename.includes("1x1") || filename.includes("square")) return 3;
+  if (ratio >= 0.5 && ratio <= 0.65) return 1; // 9:16 (스토리 또는 스토리/릴스)
+  if (ratio >= 0.95 && ratio <= 1.05) return slots.length === 4 ? 3 : 2; // 1:1
 
   return -1;
 }
@@ -90,17 +95,20 @@ export default function EditPage() {
   const [adsets, setAdsets] = useState<Adset[]>([]);
   const [selectedAdsetId, setSelectedAdsetId] = useState("");
   const [ads, setAds] = useState<Ad[]>([]);
-  const [selectedAdIds, setSelectedAdIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 새 미디어 (이미지 + 영상)
-  const [media, setMedia] = useState<MediaSlot[]>(
-    MEDIA_SLOTS.map((s) => ({ label: s.label, ratio: s.ratio, mediaType: s.mediaType, file: null, preview: null }))
-  );
-  const dropRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  // 탭 (DA/VA)
+  const [activeTab, setActiveTab] = useState<"DA" | "VA">("DA");
+
+  // 소재 배열
+  const [creatives, setCreatives] = useState<Creative[]>([
+    {
+      id: crypto.randomUUID(),
+      adId: "",
+      media: DA_SLOTS.map((s) => ({ ...s, file: null, preview: null })),
+    },
+  ]);
 
   // Load clients
   useEffect(() => {
@@ -123,7 +131,6 @@ export default function EditPage() {
     setAdsets([]);
     setSelectedAdsetId("");
     setAds([]);
-    setSelectedAdIds([]);
 
     fetch(`/api/campaigns?client=${encodeURIComponent(selectedClient)}`)
       .then((res) => res.json())
@@ -138,7 +145,6 @@ export default function EditPage() {
       setAdsets([]);
       setSelectedAdsetId("");
       setAds([]);
-      setSelectedAdIds([]);
       return;
     }
     setLoading(true);
@@ -154,7 +160,6 @@ export default function EditPage() {
   useEffect(() => {
     if (!selectedClient || !selectedAdsetId) {
       setAds([]);
-      setSelectedAdIds([]);
       return;
     }
     setLoading(true);
@@ -166,9 +171,62 @@ export default function EditPage() {
       .finally(() => setLoading(false));
   }, [selectedClient, selectedAdsetId]);
 
-  const handleMultipleFiles = useCallback(async (files: FileList | File[]) => {
+  // 탭 변경시 소재 초기화
+  useEffect(() => {
+    const slots = activeTab === "DA" ? DA_SLOTS : VA_SLOTS;
+    setCreatives([
+      {
+        id: crypto.randomUUID(),
+        adId: "",
+        media: slots.map((s) => ({ ...s, file: null, preview: null })),
+      },
+    ]);
+  }, [activeTab]);
+
+  const addCreative = () => {
+    const slots = activeTab === "DA" ? DA_SLOTS : VA_SLOTS;
+    setCreatives([
+      ...creatives,
+      {
+        id: crypto.randomUUID(),
+        adId: "",
+        media: slots.map((s) => ({ ...s, file: null, preview: null })),
+      },
+    ]);
+  };
+
+  const removeCreative = (id: string) => {
+    setCreatives(creatives.filter((c) => c.id !== id));
+  };
+
+  const updateCreativeAd = (id: string, adId: string) => {
+    setCreatives(creatives.map((c) => (c.id === id ? { ...c, adId } : c)));
+  };
+
+  const handleFileUpload = async (creativeId: string, slotIndex: number, files: FileList) => {
+    const creative = creatives.find((c) => c.id === creativeId);
+    if (!creative) return;
+
+    const file = files[0];
+    if (!file) return;
+
+    const newMedia = [...creative.media];
+    newMedia[slotIndex] = {
+      ...newMedia[slotIndex],
+      file,
+      preview: URL.createObjectURL(file),
+    };
+
+    setCreatives(creatives.map((c) => (c.id === creativeId ? { ...c, media: newMedia } : c)));
+  };
+
+  const handleMultipleFiles = async (creativeId: string, files: FileList) => {
+    const creative = creatives.find((c) => c.id === creativeId);
+    if (!creative) return;
+
+    const slots = activeTab === "DA" ? DA_SLOTS : VA_SLOTS;
     const fileArray = Array.from(files);
-    const newMedia = [...media];
+    const newMedia = [...creative.media];
     const usedSlots = new Set<number>();
 
     newMedia.forEach((m, i) => {
@@ -176,7 +234,7 @@ export default function EditPage() {
     });
 
     for (const file of fileArray) {
-      let slotIndex = await detectSlotIndex(file);
+      let slotIndex = await detectSlotIndex(file, slots);
       if (slotIndex === -1 || usedSlots.has(slotIndex)) {
         slotIndex = newMedia.findIndex((_, i) => !usedSlots.has(i));
       }
@@ -189,97 +247,114 @@ export default function EditPage() {
         usedSlots.add(slotIndex);
       }
     }
-    setMedia(newMedia);
-  }, [media]);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files.length > 0) {
-      handleMultipleFiles(e.dataTransfer.files);
-    }
-  }, [handleMultipleFiles]);
-
-  const clearSlot = (index: number) => {
-    const newMedia = [...media];
-    if (newMedia[index].preview) URL.revokeObjectURL(newMedia[index].preview!);
-    newMedia[index] = { ...newMedia[index], file: null, preview: null };
-    setMedia(newMedia);
+    setCreatives(creatives.map((c) => (c.id === creativeId ? { ...c, media: newMedia } : c)));
   };
 
-  const filledCount = media.filter((m) => m.file).length;
+  const clearSlot = (creativeId: string, slotIndex: number) => {
+    const creative = creatives.find((c) => c.id === creativeId);
+    if (!creative) return;
+
+    const newMedia = [...creative.media];
+    if (newMedia[slotIndex].preview) {
+      URL.revokeObjectURL(newMedia[slotIndex].preview!);
+    }
+    newMedia[slotIndex] = { ...newMedia[slotIndex], file: null, preview: null };
+
+    setCreatives(creatives.map((c) => (c.id === creativeId ? { ...c, media: newMedia } : c)));
+  };
 
   const handleSubmit = async () => {
-    if (selectedAdIds.length === 0) {
-      alert("수정할 광고를 선택해주세요");
-      return;
-    }
-    if (filledCount === 0) {
-      alert("새 이미지 또는 영상을 업로드해주세요");
-      return;
+    // 유효성 검사
+    for (const creative of creatives) {
+      if (!creative.adId) {
+        alert("모든 소재에서 교체할 광고를 선택해주세요");
+        return;
+      }
+      const filledCount = creative.media.filter((m) => m.file).length;
+      if (filledCount === 0) {
+        alert("모든 소재에 미디어를 업로드해주세요");
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
-      // Phase 1: 미디어 업로드 (이미지 + 영상)
-      const mediaPayload = await Promise.all(
-        media
-          .filter((m) => m.file)
-          .map(async (m) => {
-            const buffer = await m.file!.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            let binary = "";
-            bytes.forEach((b) => (binary += String.fromCharCode(b)));
-            const base64 = btoa(binary);
+      const results = [];
 
-            const res = await fetch("/api/upload-image", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                clientName: selectedClient,
-                base64,
-                filename: m.file!.name,
-                mediaType: m.mediaType,
-              }),
-            });
+      for (const creative of creatives) {
+        // Phase 1: 미디어 업로드
+        const mediaPayload = await Promise.all(
+          creative.media
+            .filter((m) => m.file)
+            .map(async (m) => {
+              const buffer = await m.file!.arrayBuffer();
+              const bytes = new Uint8Array(buffer);
+              let binary = "";
+              bytes.forEach((b) => (binary += String.fromCharCode(b)));
+              const base64 = btoa(binary);
 
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error || `${m.mediaType === "video" ? "영상" : "이미지"} 업로드 실패`);
+              const mediaType = activeTab === "VA" ? "video" : "image";
 
-            return {
-              slot: m.label,
-              ratio: m.ratio,
-              mediaType: m.mediaType,
-              hash: result.hash,
-              videoId: result.videoId,
-            };
-          })
-      );
+              const res = await fetch("/api/upload-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  clientName: selectedClient,
+                  base64,
+                  filename: m.file!.name,
+                  mediaType,
+                }),
+              });
 
-      // Phase 2: 광고 업데이트
-      const response = await fetch("/api/ads/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientName: selectedClient,
-          adIds: selectedAdIds,
-          media: mediaPayload,
-        }),
-      });
+              const result = await res.json();
+              if (!res.ok) throw new Error(result.error || "업로드 실패");
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "업데이트 실패");
+              return {
+                slot: m.label,
+                ratio: m.ratio,
+                mediaType,
+                hash: result.hash,
+                videoId: result.videoId,
+              };
+            })
+        );
 
-      alert(result.message);
+        // Phase 2: 광고 업데이트
+        const response = await fetch("/api/ads/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientName: selectedClient,
+            adIds: [creative.adId],
+            media: mediaPayload,
+          }),
+        });
 
-      // 성공 후 초기화
-      setSelectedAdIds([]);
-      setMedia(MEDIA_SLOTS.map((s) => ({ label: s.label, ratio: s.ratio, mediaType: s.mediaType, file: null, preview: null })));
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "업데이트 실패");
+
+        results.push(result);
+      }
+
+      alert(`${creatives.length}개 소재 교체 완료!`);
+
+      // 초기화
+      const slots = activeTab === "DA" ? DA_SLOTS : VA_SLOTS;
+      setCreatives([
+        {
+          id: crypto.randomUUID(),
+          adId: "",
+          media: slots.map((s) => ({ ...s, file: null, preview: null })),
+        },
+      ]);
 
       // 광고 목록 새로고침
       if (selectedAdsetId) {
-        const adsRes = await fetch(`/api/ads?client=${encodeURIComponent(selectedClient)}&adset_id=${selectedAdsetId}`);
+        const adsRes = await fetch(
+          `/api/ads?client=${encodeURIComponent(selectedClient)}&adset_id=${selectedAdsetId}`
+        );
         const adsData = await adsRes.json();
         setAds(adsData.ads || []);
       }
@@ -290,28 +365,13 @@ export default function EditPage() {
     }
   };
 
-  const toggleAdSelection = (adId: string) => {
-    setSelectedAdIds((prev) =>
-      prev.includes(adId) ? prev.filter((id) => id !== adId) : [...prev, adId]
-    );
-  };
-
-  const selectAllAds = () => {
-    if (selectedAdIds.length === ads.length) {
-      setSelectedAdIds([]);
-    } else {
-      setSelectedAdIds(ads.map((a) => a.id));
-    }
-  };
-
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-6xl">
       <h1 className="text-3xl font-bold mb-2">소재 교체</h1>
-      <p className="text-muted mb-8">기존 광고의 이미지를 한번에 교체하세요</p>
+      <p className="text-muted mb-8">광고별로 이미지/영상을 개별 교체하세요</p>
 
       {/* 필터 영역 */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {/* 광고주 */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium mb-2">광고주</label>
           <select
@@ -320,12 +380,13 @@ export default function EditPage() {
             onChange={(e) => setSelectedClient(e.target.value)}
           >
             {clients.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
         </div>
 
-        {/* 캠페인 */}
         <div>
           <label className="block text-sm font-medium mb-2">캠페인</label>
           <select
@@ -344,7 +405,6 @@ export default function EditPage() {
           </select>
         </div>
 
-        {/* 광고세트 */}
         <div>
           <label className="block text-sm font-medium mb-2">광고세트</label>
           <select
@@ -363,172 +423,216 @@ export default function EditPage() {
               ))}
           </select>
         </div>
-
-        {/* 선택된 광고 수 */}
-        <div className="flex items-end">
-          <div className="toss-input text-sm bg-gray-50 text-center">
-            선택: <span className="font-bold text-primary">{selectedAdIds.length}</span>개
-          </div>
-        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* 왼쪽: 광고 목록 */}
-        <div className="toss-card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold">광고 목록</h2>
-            {ads.length > 0 && (
-              <button
-                type="button"
-                onClick={selectAllAds}
-                className="text-xs text-primary hover:underline"
-              >
-                {selectedAdIds.length === ads.length ? "전체 해제" : "전체 선택"}
-              </button>
-            )}
-          </div>
+      {/* 탭 */}
+      <div className="flex gap-2 mb-6 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setActiveTab("DA")}
+          className={`px-6 py-3 font-bold transition-all ${
+            activeTab === "DA"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted hover:text-foreground"
+          }`}
+        >
+          DA 소재 교체 (이미지 4개)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("VA")}
+          className={`px-6 py-3 font-bold transition-all ${
+            activeTab === "VA"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted hover:text-foreground"
+          }`}
+        >
+          VA 소재 교체 (영상 3개)
+        </button>
+      </div>
 
-          {loading ? (
-            <p className="text-muted text-sm py-8 text-center">불러오는 중...</p>
-          ) : ads.length === 0 ? (
-            <p className="text-muted text-sm py-8 text-center">
-              {selectedAdsetId ? "광고가 없습니다" : "캠페인과 광고세트를 선택하세요"}
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {ads.map((ad) => (
-                <label
-                  key={ad.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                    selectedAdIds.includes(ad.id)
-                      ? "bg-blue-50 border-2 border-primary"
-                      : "bg-gray-50 border-2 border-transparent hover:bg-gray-100"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedAdIds.includes(ad.id)}
-                    onChange={() => toggleAdSelection(ad.id)}
-                    className="w-5 h-5 text-primary rounded"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{ad.name}</p>
-                    <p className="text-xs text-muted">
-                      {ad.status === "ACTIVE" ? "🟢 활성" : "⏸️ 일시중지"}
-                    </p>
-                  </div>
-                  {ad.creative?.thumbnailUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={ad.creative.thumbnailUrl}
-                      alt=""
-                      className="w-12 h-12 object-cover rounded-lg"
-                    />
-                  )}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* 소재 목록 */}
+      <div className="space-y-6">
+        {creatives.map((creative, index) => {
+          const filledCount = creative.media.filter((m) => m.file).length;
+          const totalSlots = activeTab === "DA" ? 4 : 3;
 
-        {/* 오른쪽: 새 미디어 업로드 */}
-        <div className="toss-card">
-          <h2 className="font-bold mb-4">새 미디어 ({filledCount}/5)</h2>
+          return (
+            <div key={creative.id} className="toss-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg">
+                  {activeTab} 소재 #{index + 1}
+                </h3>
+                {creatives.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeCreative(creative.id)}
+                    className="text-sm text-red-500 hover:underline"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
 
-          {/* 드래그앤드롭 */}
-          <div
-            ref={dropRef}
-            className={`relative border-2 border-dashed rounded-xl p-4 mb-4 transition-all cursor-pointer ${
-              isDragging ? "border-primary bg-blue-50" : "border-gray-200 hover:border-primary"
-            }`}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => inputRef.current?.click()}
-          >
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              className="hidden"
-              onChange={(e) => e.target.files && handleMultipleFiles(e.target.files)}
-            />
-            <div className="text-center py-2">
-              <div className="text-2xl mb-1">🖼️🎬</div>
-              <p className="text-sm font-medium">이미지/영상을 드래그하거나 클릭</p>
-              <p className="text-xs text-muted">비율/파일명으로 자동 분류</p>
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-6">
+                {/* 왼쪽: 광고 선택 */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">교체할 광고 선택</label>
+                  <select
+                    className="toss-input text-sm mb-4"
+                    value={creative.adId}
+                    onChange={(e) => updateCreativeAd(creative.id, e.target.value)}
+                    disabled={!selectedAdsetId}
+                  >
+                    <option value="">선택하세요</option>
+                    {ads.map((ad) => (
+                      <option key={ad.id} value={ad.id}>
+                        {ad.name} ({ad.status === "ACTIVE" ? "🟢 활성" : "⏸️ 일시중지"})
+                      </option>
+                    ))}
+                  </select>
 
-          {/* 미디어 슬롯 */}
-          <div className="grid grid-cols-5 gap-2">
-            {media.map((slot, i) => (
-              <div
-                key={i}
-                className={`relative rounded-lg overflow-hidden border-2 ${
-                  slot.file ? "border-primary" : "border-gray-200 border-dashed"
-                }`}
-              >
-                <div className="relative bg-gray-100" style={{ paddingBottom: "125%" }}>
-                  {slot.preview ? (
-                    <>
-                      {slot.mediaType === "video" ? (
-                        <video
-                          src={slot.preview}
-                          className="absolute inset-0 w-full h-full object-contain bg-gray-900"
-                          controls={false}
-                          muted
-                        />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={slot.preview}
-                          alt={slot.label}
-                          className="absolute inset-0 w-full h-full object-contain bg-gray-900"
-                        />
-                      )}
-                      <button
-                        type="button"
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs"
-                        onClick={() => clearSlot(i)}
-                      >
-                        ✕
-                      </button>
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xl opacity-30">{slot.mediaType === "video" ? "🎬" : "🖼"}</span>
+                  {creative.adId && (
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-muted mb-1">선택된 광고</p>
+                      <p className="text-sm font-medium">
+                        {ads.find((a) => a.id === creative.adId)?.name || creative.adId}
+                      </p>
                     </div>
                   )}
                 </div>
-                <div className="p-1.5 bg-white text-center">
-                  <div className="text-[10px] font-medium truncate">{slot.label}</div>
-                  <div className="text-[9px] text-muted">{slot.ratio}</div>
+
+                {/* 오른쪽: 미디어 업로드 */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {activeTab === "DA" ? "이미지" : "영상"} ({filledCount}/{totalSlots})
+                  </label>
+
+                  {/* 드래그앤드롭 */}
+                  <div
+                    className="relative border-2 border-dashed rounded-xl p-3 mb-3 transition-all cursor-pointer border-gray-200 hover:border-primary"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer.files.length > 0) {
+                        handleMultipleFiles(creative.id, e.dataTransfer.files);
+                      }
+                    }}
+                    onClick={() => {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = activeTab === "DA" ? "image/*" : "video/*";
+                      input.multiple = true;
+                      input.onchange = (e) => {
+                        const files = (e.target as HTMLInputElement).files;
+                        if (files) handleMultipleFiles(creative.id, files);
+                      };
+                      input.click();
+                    }}
+                  >
+                    <div className="text-center py-2">
+                      <div className="text-xl mb-1">
+                        {activeTab === "DA" ? "🖼️" : "🎬"}
+                      </div>
+                      <p className="text-xs font-medium">
+                        {activeTab === "DA" ? "이미지" : "영상"}를 드래그하거나 클릭
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 미디어 슬롯 */}
+                  <div className={`grid ${activeTab === "DA" ? "grid-cols-4" : "grid-cols-3"} gap-2`}>
+                    {creative.media.map((slot, i) => (
+                      <div
+                        key={i}
+                        className={`relative rounded-lg overflow-hidden border-2 ${
+                          slot.file ? "border-primary" : "border-gray-200 border-dashed"
+                        }`}
+                      >
+                        <div className="relative bg-gray-100" style={{ paddingBottom: "125%" }}>
+                          {slot.preview ? (
+                            <>
+                              {activeTab === "VA" ? (
+                                <video
+                                  src={slot.preview}
+                                  className="absolute inset-0 w-full h-full object-contain bg-gray-900"
+                                  controls={false}
+                                  muted
+                                />
+                              ) : (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={slot.preview}
+                                  alt={slot.label}
+                                  className="absolute inset-0 w-full h-full object-contain bg-gray-900"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs"
+                                onClick={() => clearSlot(creative.id, i)}
+                              >
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <div
+                              className="absolute inset-0 flex items-center justify-center cursor-pointer hover:bg-gray-200"
+                              onClick={() => {
+                                const input = document.createElement("input");
+                                input.type = "file";
+                                input.accept = activeTab === "DA" ? "image/*" : "video/*";
+                                input.onchange = (e) => {
+                                  const files = (e.target as HTMLInputElement).files;
+                                  if (files) handleFileUpload(creative.id, i, files);
+                                };
+                                input.click();
+                              }}
+                            >
+                              <span className="text-xl opacity-30">
+                                {activeTab === "DA" ? "🖼" : "🎬"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-1.5 bg-white text-center">
+                          <div className="text-[10px] font-medium truncate">{slot.label}</div>
+                          <div className="text-[9px] text-muted">{slot.ratio}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* 하단 버튼 */}
+      {/* 소재 추가 버튼 */}
+      <button
+        type="button"
+        onClick={addCreative}
+        className="w-full py-3 mt-4 border-2 border-dashed border-gray-300 rounded-xl text-muted hover:border-primary hover:text-primary transition-all"
+      >
+        + 소재 추가
+      </button>
+
+      {/* 하단 제출 버튼 */}
       <div className="sticky bottom-0 bg-background py-4 mt-6 border-t border-border">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted">
-            {selectedAdIds.length}개 광고 선택됨 · {filledCount}개 미디어 준비됨
-          </p>
+          <p className="text-sm text-muted">{creatives.length}개 소재 준비됨</p>
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={selectedAdIds.length === 0 || filledCount === 0 || isSubmitting}
+            disabled={isSubmitting}
             className={`px-8 py-3 rounded-xl font-bold transition-all ${
-              selectedAdIds.length > 0 && filledCount > 0 && !isSubmitting
+              !isSubmitting
                 ? "bg-primary text-white hover:bg-secondary"
                 : "bg-gray-100 text-muted cursor-not-allowed"
             }`}
           >
-            {isSubmitting ? "수정 중..." : `${selectedAdIds.length}개 광고 소재 교체`}
+            {isSubmitting ? "교체 중..." : `${creatives.length}개 소재 일괄 교체`}
           </button>
         </div>
       </div>
