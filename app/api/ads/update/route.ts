@@ -216,20 +216,29 @@ async function createNewCreative(
   const assetLabelKey = isVideo ? "video_label" : "image_label";
 
   if (isVideo) {
-    // VA 영상 규칙
-    // Rule 1: 9:16 → 스토리, 릴스 (모든 플랫폼)
+    // VA 영상 규칙 - Instagram 제외 (Instagram ID 없을 때)
+    const platforms = config.instagram_actor_id
+      ? ["facebook", "instagram", "audience_network", "messenger"]
+      : ["facebook", "audience_network", "messenger"];
+
+    // Rule 1: 9:16 → 스토리, 릴스
     if (labelMap["9x16"]) {
-      assetCustomizationRules.push({
+      const rule: Record<string, unknown> = {
         customization_spec: {
-          publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
+          publisher_platforms: platforms,
           facebook_positions: ["story", "facebook_reels"],
-          instagram_positions: ["story", "reels", "ig_search", "profile_reels"],
           messenger_positions: ["story"],
           audience_network_positions: ["classic"],
         },
         [assetLabelKey]: { name: labelMap["9x16"] },
         priority: priority++,
-      });
+      };
+
+      if (config.instagram_actor_id) {
+        (rule.customization_spec as Record<string, unknown>).instagram_positions = ["story", "reels", "ig_search", "profile_reels"];
+      }
+
+      assetCustomizationRules.push(rule);
     }
 
     // Rule 2: 1:1 → right_hand_column, search
@@ -363,14 +372,26 @@ async function createNewCreative(
     }
   }
 
+  // object_story_spec 구성
+  const objectStorySpec: Record<string, unknown> = {
+    page_id: config.page_id,
+  };
+
+  // Instagram ID 포함 (DA는 instagram_actor_id, VA는 instagram_user_id)
+  if (config.instagram_actor_id) {
+    if (isVideo) {
+      // VA 영상: instagram_user_id 사용
+      objectStorySpec.instagram_user_id = config.instagram_actor_id;
+    } else {
+      // DA 이미지: instagram_actor_id 사용
+      objectStorySpec.instagram_actor_id = config.instagram_actor_id;
+    }
+  }
+
   const creativeData: Record<string, unknown> = {
     access_token: accessToken,
     name: name,
-    object_story_spec: {
-      page_id: config.page_id,
-      // VA 영상은 Instagram ID 제외 시도
-      ...(!isVideo && config.instagram_actor_id && { instagram_actor_id: config.instagram_actor_id }),
-    },
+    object_story_spec: objectStorySpec,
     asset_feed_spec: {
       ...(images.length > 0 && { images }),
       ...(videos.length > 0 && { videos }),
