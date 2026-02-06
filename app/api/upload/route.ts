@@ -345,16 +345,10 @@ async function createAdCreative(
 
   }
 
-  // 옴니채널 광고: applink_treatment + degrees_of_freedom_spec
+  // 옴니채널 광고: applink_treatment만 설정
+  // NOTE: degrees_of_freedom_spec의 standard_enhancements는 지원 중단됨 (Subcode 3858504)
   if (omnichannel) {
     creativeData.applink_treatment = "automatic";
-    creativeData.degrees_of_freedom_spec = {
-      creative_features_spec: {
-        standard_enhancements: {
-          enroll_status: "OPT_IN",
-        },
-      },
-    };
   }
 
   // 🔍 DEBUG: Creative 생성 직전 데이터 확인
