@@ -318,47 +318,6 @@ async function createAdCreative(
       });
     }
 
-    // 🔧 CRITICAL: 옴니채널에는 omnichannel_link_spec이 반드시 필요함!
-    const assetFeedSpec: Record<string, unknown> = {
-      images,
-      bodies: [{ text: creative.body }],
-      titles: [{ text: creative.title }],
-      descriptions: [{ text: description }],
-      link_urls: [
-        {
-          website_url: websiteUrl,
-          display_url: displayUrl,
-        },
-      ],
-      call_to_action_types: ["LEARN_MORE"],
-      ad_formats: ["AUTOMATIC_FORMAT"],
-      ...(assetCustomizationRules.length > 0 && { asset_customization_rules: assetCustomizationRules }),
-      optimization_type: "PLACEMENT",
-    };
-
-    // 옴니채널 광고: asset_feed_spec 내부에 omnichannel_link_spec 추가 (필수!)
-    if (omnichannel) {
-      assetFeedSpec.omnichannel_link_spec = {
-        ios: [
-          {
-            app_id: omnichannel.ios.app_id,
-            url: omnichannel.ios.store_url,
-          },
-        ],
-        android: [
-          {
-            app_id: omnichannel.android.app_id,
-            url: omnichannel.android.store_url,
-          },
-        ],
-        web: [
-          {
-            url: websiteUrl,
-          },
-        ],
-      };
-    }
-
     creativeData = {
       access_token: accessToken,
       name: creative.name,
@@ -366,14 +325,36 @@ async function createAdCreative(
         page_id: config.page_id,
         ...(config.instagram_actor_id && { instagram_user_id: config.instagram_actor_id }),
       },
-      asset_feed_spec: assetFeedSpec,
+      asset_feed_spec: {
+        images,
+        bodies: [{ text: creative.body }],
+        titles: [{ text: creative.title }],
+        descriptions: [{ text: description }],
+        link_urls: [
+          {
+            website_url: websiteUrl,
+            display_url: displayUrl,
+          },
+        ],
+        call_to_action_types: ["LEARN_MORE"],
+        ad_formats: ["AUTOMATIC_FORMAT"],
+        ...(assetCustomizationRules.length > 0 && { asset_customization_rules: assetCustomizationRules }),
+        optimization_type: "PLACEMENT",
+      },
     };
 
   }
 
-  // Omnichannel adset: applink_treatment 설정
+  // 옴니채널 광고: applink_treatment + degrees_of_freedom_spec
   if (omnichannel) {
     creativeData.applink_treatment = "automatic";
+    creativeData.degrees_of_freedom_spec = {
+      creative_features_spec: {
+        standard_enhancements: {
+          enroll_status: "OPT_IN",
+        },
+      },
+    };
   }
 
   // 🔍 DEBUG: Creative 생성 직전 데이터 확인
