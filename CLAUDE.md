@@ -357,3 +357,10 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
   - Meta API는 서버 간 통신만 허용
 - **보안**: Access Token을 서버 환경변수에 저장 (Redis 권장)
   - localStorage 사용 시 XSS 공격 위험
+- **Omnichannel (web+app) 광고 제한** (2026.02.06 조사 완료)
+  - 현재 `/api/upload/route.ts`는 웹 전용 광고만 지원 (line 431 필터링)
+  - Omnichannel adset에는 복잡한 tracking_specs/conversion_specs 필요
+  - Meta API error 2446461 "omnichannel_link_spec required" - 오해의 소지 있는 에러
+  - 실제 문제: web+app 추적 설정, 4개 이미지 해시 필요 (단일 해시 불충분)
+  - **해결책**: web&app 캠페인용 별도 엔드포인트 구현 필요
+  - **현재 상태**: 웹 전용 광고는 완벽히 작동 ✅
