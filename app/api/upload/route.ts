@@ -233,19 +233,7 @@ async function createAdCreative(
       });
     }
 
-    // Rule 2: 1:1 → right_hand_column, search
-    if (labelMap["1x1"]) {
-      assetCustomizationRules.push({
-        customization_spec: {
-          publisher_platforms: ["facebook"],
-          facebook_positions: ["right_hand_column", "search"],
-        },
-        image_label: { name: labelMap["1x1"] },
-        priority: priority++,
-      });
-    }
-
-    // Rule 3: 4:5 → facebook feed
+    // Rule 2: 4:5 → facebook feed만
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -257,7 +245,7 @@ async function createAdCreative(
       });
     }
 
-    // Rule 4: 4:5 → instagram stream (피드)
+    // Rule 3: 4:5 → instagram stream (피드)만
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -269,7 +257,7 @@ async function createAdCreative(
       });
     }
 
-    // Rule 5: 9:16 Reels → instagram reels
+    // Rule 4: 9:16 Reels → instagram reels
     if (labelMap["9x16reels"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -281,7 +269,7 @@ async function createAdCreative(
       });
     }
 
-    // Rule 6: 9:16 Reels → facebook_reels
+    // Rule 5: 9:16 Reels → facebook_reels
     if (labelMap["9x16reels"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -293,7 +281,7 @@ async function createAdCreative(
       });
     }
 
-    // Rule 7: 1:1 → 기본값 (나머지 모든 지면)
+    // Rule 6: 1:1 → 기본값 (placement 지정 없음! right_hand_column, search는 자동 처리)
     if (labelMap["1x1"]) {
       assetCustomizationRules.push({
         customization_spec: {},

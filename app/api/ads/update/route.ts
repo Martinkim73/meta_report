@@ -216,19 +216,19 @@ async function createNewCreative(
   const assetLabelKey = isVideo ? "video_label" : "image_label";
 
   if (isVideo) {
-    // VA 영상 규칙 - Instagram 제외 (Instagram ID 없을 때)
+    // VA 영상 규칙 - 정상 작동하는 광고와 동일한 구조 (4개 규칙만)
     const platforms = config.instagram_actor_id
       ? ["facebook", "instagram", "audience_network", "messenger"]
       : ["facebook", "audience_network", "messenger"];
 
-    // Rule 1: 9:16 → 스토리, 릴스
+    // Rule 1: 9:16 → 스토리, 릴스, 탐색
     if (labelMap["9x16"]) {
       const rule: Record<string, unknown> = {
         customization_spec: {
           publisher_platforms: platforms,
           facebook_positions: ["story", "facebook_reels"],
           messenger_positions: ["story"],
-          audience_network_positions: ["classic"],
+          audience_network_positions: ["classic", "rewarded_video"],
         },
         [assetLabelKey]: { name: labelMap["9x16"] },
         priority: priority++,
@@ -241,19 +241,7 @@ async function createNewCreative(
       assetCustomizationRules.push(rule);
     }
 
-    // Rule 2: 1:1 → right_hand_column, search
-    if (labelMap["1x1"]) {
-      assetCustomizationRules.push({
-        customization_spec: {
-          publisher_platforms: ["facebook"],
-          facebook_positions: ["right_hand_column", "search"],
-        },
-        [assetLabelKey]: { name: labelMap["1x1"] },
-        priority: priority++,
-      });
-    }
-
-    // Rule 3: 4:5 → facebook feed
+    // Rule 2: 4:5 → facebook feed만
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -265,7 +253,7 @@ async function createNewCreative(
       });
     }
 
-    // Rule 4: 4:5 → instagram stream (피드)
+    // Rule 3: 4:5 → instagram stream (피드)만
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -277,7 +265,7 @@ async function createNewCreative(
       });
     }
 
-    // Rule 5: 1:1 → 기본값
+    // Rule 4: 1:1 → 기본값 (placement 지정 없음! right_hand_column, search는 자동 처리)
     if (labelMap["1x1"]) {
       assetCustomizationRules.push({
         customization_spec: {},
@@ -286,7 +274,7 @@ async function createNewCreative(
       });
     }
   } else {
-    // DA 이미지 규칙
+    // DA 이미지 규칙 (4슬롯: 4x5, 9x16, 9x16reels, 1x1)
     // Rule 1: 9:16 → story, ig_search, profile_reels
     if (labelMap["9x16"]) {
       assetCustomizationRules.push({
@@ -302,19 +290,7 @@ async function createNewCreative(
       });
     }
 
-    // Rule 2: 1:1 → right_hand_column, search
-    if (labelMap["1x1"]) {
-      assetCustomizationRules.push({
-        customization_spec: {
-          publisher_platforms: ["facebook"],
-          facebook_positions: ["right_hand_column", "search"],
-        },
-        [assetLabelKey]: { name: labelMap["1x1"] },
-        priority: priority++,
-      });
-    }
-
-    // Rule 3: 4:5 → facebook feed
+    // Rule 2: 4:5 → facebook feed만
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -326,7 +302,7 @@ async function createNewCreative(
       });
     }
 
-    // Rule 4: 4:5 → instagram stream (피드)
+    // Rule 3: 4:5 → instagram stream (피드)만
     if (labelMap["4x5"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -338,7 +314,7 @@ async function createNewCreative(
       });
     }
 
-    // Rule 5: 9:16 Reels → instagram reels
+    // Rule 4: 9:16 Reels → instagram reels
     if (labelMap["9x16reels"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -350,7 +326,7 @@ async function createNewCreative(
       });
     }
 
-    // Rule 6: 9:16 Reels → facebook_reels
+    // Rule 5: 9:16 Reels → facebook_reels
     if (labelMap["9x16reels"]) {
       assetCustomizationRules.push({
         customization_spec: {
@@ -362,7 +338,7 @@ async function createNewCreative(
       });
     }
 
-    // Rule 7: 1:1 → 기본값
+    // Rule 6: 1:1 → 기본값 (placement 지정 없음! right_hand_column, search는 자동 처리)
     if (labelMap["1x1"]) {
       assetCustomizationRules.push({
         customization_spec: {},
