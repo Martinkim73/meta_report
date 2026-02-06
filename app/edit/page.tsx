@@ -39,6 +39,7 @@ interface Creative {
   id: string; // 임시 ID
   adId: string; // 교체할 광고 ID
   media: MediaSlot[];
+  searchQuery: string; // 광고 검색어 (소재별)
 }
 
 const DA_SLOTS = [
@@ -101,15 +102,13 @@ export default function EditPage() {
   // 탭 (DA/VA)
   const [activeTab, setActiveTab] = useState<"DA" | "VA">("DA");
 
-  // 검색어
-  const [searchQuery, setSearchQuery] = useState("");
-
   // 소재 배열
   const [creatives, setCreatives] = useState<Creative[]>([
     {
       id: crypto.randomUUID(),
       adId: "",
       media: DA_SLOTS.map((s) => ({ ...s, file: null, preview: null })),
+      searchQuery: "",
     },
   ]);
 
@@ -182,6 +181,7 @@ export default function EditPage() {
         id: crypto.randomUUID(),
         adId: "",
         media: slots.map((s) => ({ ...s, file: null, preview: null })),
+        searchQuery: "",
       },
     ]);
   }, [activeTab]);
@@ -194,6 +194,7 @@ export default function EditPage() {
         id: crypto.randomUUID(),
         adId: "",
         media: slots.map((s) => ({ ...s, file: null, preview: null })),
+        searchQuery: "",
       },
     ]);
   };
@@ -206,15 +207,21 @@ export default function EditPage() {
     setCreatives(creatives.map((c) => (c.id === id ? { ...c, adId } : c)));
   };
 
-  // 광고 필터링 (검색어 + 정렬)
-  const filteredAds = ads
-    .filter((ad) => ad.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => {
-      // 활성화된 광고 우선
-      if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
-      if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
-      return 0;
-    });
+  const updateCreativeSearch = (id: string, searchQuery: string) => {
+    setCreatives(creatives.map((c) => (c.id === id ? { ...c, searchQuery } : c)));
+  };
+
+  // 광고 필터링 (검색어 + 정렬) - 소재별
+  const getFilteredAds = (searchQuery: string) => {
+    return ads
+      .filter((ad) => ad.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      .sort((a, b) => {
+        // 활성화된 광고 우선
+        if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+        if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
+        return 0;
+      });
+  };
 
   const handleFileUpload = async (creativeId: string, slotIndex: number, files: FileList) => {
     const creative = creatives.find((c) => c.id === creativeId);
@@ -360,6 +367,7 @@ export default function EditPage() {
           id: crypto.randomUUID(),
           adId: "",
           media: slots.map((s) => ({ ...s, file: null, preview: null })),
+          searchQuery: "",
         },
       ]);
 
@@ -469,6 +477,7 @@ export default function EditPage() {
         {creatives.map((creative, index) => {
           const filledCount = creative.media.filter((m) => m.file).length;
           const totalSlots = activeTab === "DA" ? 4 : 3;
+          const filteredAds = getFilteredAds(creative.searchQuery);
 
           return (
             <div key={creative.id} className="toss-card">
@@ -498,19 +507,30 @@ export default function EditPage() {
                       type="text"
                       placeholder="광고명 검색..."
                       className="toss-input text-sm mb-2"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={creative.searchQuery}
+                      onChange={(e) => updateCreativeSearch(creative.id, e.target.value)}
                     />
+                  )}
+
+                  {/* 로딩 상태 */}
+                  {loading && ads.length === 0 && (
+                    <div className="p-3 bg-gray-50 rounded-lg mb-4 text-center">
+                      <p className="text-sm text-muted">광고 불러오는 중...</p>
+                    </div>
                   )}
 
                   <select
                     className="toss-input text-sm mb-4"
                     value={creative.adId}
                     onChange={(e) => updateCreativeAd(creative.id, e.target.value)}
-                    disabled={ads.length === 0}
+                    disabled={loading || ads.length === 0}
                   >
                     <option value="">
-                      {ads.length === 0 ? "광고세트를 먼저 선택하세요" : "선택하세요"}
+                      {!selectedAdsetId
+                        ? "광고세트를 먼저 선택하세요"
+                        : ads.length === 0
+                        ? "광고 목록이 비어있습니다"
+                        : "선택하세요"}
                     </option>
                     {filteredAds.map((ad) => (
                       <option key={ad.id} value={ad.id}>
@@ -519,8 +539,14 @@ export default function EditPage() {
                     ))}
                   </select>
 
-                  {searchQuery && filteredAds.length === 0 && (
-                    <p className="text-xs text-muted mb-2">검색 결과 없음</p>
+                  {creative.searchQuery && filteredAds.length === 0 && ads.length > 0 && (
+                    <p className="text-xs text-muted mb-2">
+                      검색 결과 없음 ({ads.length}개 중 0개)
+                    </p>
+                  )}
+
+                  {!creative.searchQuery && ads.length > 0 && (
+                    <p className="text-xs text-muted mb-2">총 {ads.length}개 광고</p>
                   )}
 
                   {creative.adId && (
