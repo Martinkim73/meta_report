@@ -368,7 +368,8 @@ async function createNewCreative(
     name: name,
     object_story_spec: {
       page_id: config.page_id,
-      ...(config.instagram_actor_id && { instagram_actor_id: config.instagram_actor_id }),
+      // VA 영상은 Instagram ID 제외 시도
+      ...(!isVideo && config.instagram_actor_id && { instagram_actor_id: config.instagram_actor_id }),
     },
     asset_feed_spec: {
       ...(images.length > 0 && { images }),
@@ -409,7 +410,9 @@ async function createNewCreative(
 
   if (result.error) {
     const errorDetail = result.error.error_user_msg || result.error.message;
-    throw new Error(`Creative creation failed: ${errorDetail}`);
+    console.error("Creative creation error details:", JSON.stringify(result.error, null, 2));
+    console.error("Creative data sent:", JSON.stringify(creativeData, null, 2));
+    throw new Error(`Creative creation failed: ${errorDetail} (code: ${result.error.code}, subcode: ${result.error.error_subcode || 'none'})`);
   }
 
   return result.id;
@@ -435,7 +438,8 @@ async function updateAdCreative(
   const result = await response.json();
 
   if (result.error) {
-    throw new Error(`Ad update failed: ${result.error.message}`);
+    console.error("Ad update error details:", JSON.stringify(result.error, null, 2));
+    throw new Error(`Ad update failed: ${result.error.message} (code: ${result.error.code}, subcode: ${result.error.error_subcode || 'none'})`);
   }
 
   return result.success === true;
@@ -476,9 +480,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Instagram ID 자동 설정
-    if (clientName === "AI코딩밸리" && !config.instagram_actor_id) {
-      config.instagram_actor_id = AI_CODINGVALLEY_INSTAGRAM_ID;
+    // Instagram ID 자동 설정 - 페이지에서 조회
+    if (!config.instagram_actor_id && config.page_id) {
+      try {
+        const igRes = await fetch(
+          `${GRAPH_API_BASE}/${config.page_id}?fields=instagram_business_account&access_token=${config.access_token}`
+        );
+        const igData = await igRes.json();
+        if (igData.instagram_business_account?.id) {
+          config.instagram_actor_id = igData.instagram_business_account.id;
+          console.log("Instagram actor ID fetched:", config.instagram_actor_id);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch Instagram actor ID:", err);
+      }
     }
 
     const landingUrl = body.landingUrl || DEFAULT_LANDING_URL;
