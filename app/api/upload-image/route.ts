@@ -34,39 +34,30 @@ export async function POST(request: NextRequest) {
     const accessToken = config.access_token;
 
     if (mediaType === "video") {
-      // 비디오: FormData로 직접 Meta API에 전송
-      const videoBuffer = await file.arrayBuffer();
-      const blob = new Blob([videoBuffer]);
-
+      // 비디오: FormData로 직접 Meta API에 전송 (원본 File 객체 사용)
       const metaFormData = new FormData();
       metaFormData.append("access_token", accessToken);
       metaFormData.append("title", file.name);
-      metaFormData.append("source", blob, file.name);
+      metaFormData.append("source", file);  // 원본 File 객체 직접 사용 (MIME type 유지)
 
       const response = await fetch(`${GRAPH_API_BASE}/${adAccountId}/advideos`, {
         method: "POST",
-        body: metaFormData,
+        body: metaFormData,  // Content-Type 자동 설정 (multipart/form-data)
       });
 
       const result = await safeJsonParse(response, "Video upload");
       return NextResponse.json({ videoId: result.id });
     }
 
-    // 이미지: Base64로 변환 후 Meta API에 전송 (Meta API 요구사항)
-    const imageBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(imageBuffer);
-    let binary = "";
-    bytes.forEach((b) => (binary += String.fromCharCode(b)));
-    const base64 = btoa(binary);
+    // 이미지: FormData로 직접 Meta API에 전송 (원본 File 객체 사용)
+    const imageFormData = new FormData();
+    imageFormData.append("access_token", accessToken);
+    imageFormData.append("source", file);  // 원본 File 객체 직접 사용 (MIME type 유지)
+    imageFormData.append("name", file.name);
 
     const response = await fetch(`${GRAPH_API_BASE}/${adAccountId}/adimages`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        access_token: accessToken,
-        bytes: base64,
-        name: file.name,
-      }),
+      body: imageFormData,  // Content-Type 자동 설정 (multipart/form-data)
     });
 
     const result = await safeJsonParse(response, "Image upload");
