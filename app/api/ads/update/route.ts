@@ -151,58 +151,31 @@ async function createNewCreative(
   const websiteUrl = generateUtmUrl(name, adsetName, landingUrl);
   const timestamp = Date.now();
 
-  // ratio로 이미지 찾기
-  const img4x5 = media.find((m) => m.hash && m.ratio === "4:5");
-  const img9x16 = media.find((m) => m.hash && m.ratio === "9:16" && m.slot?.includes("스토리"));
-  const img9x16Reels = media.find((m) => m.hash && m.ratio === "9:16" && m.slot?.includes("릴스"));
-  const img1x1 = media.find((m) => m.hash && m.ratio === "1:1");
-
-  // 이미지 배열 생성 (adlabels 포함)
+  // 모든 이미지 추가 + 슬롯별 매핑
   const images: { hash: string; adlabels: { name: string }[] }[] = [];
   const labelMap: Record<string, string> = {};
 
-  // 4:5 이미지
-  if (img4x5?.hash) {
-    const label = `placement_asset_4x5_${timestamp}`;
-    images.push({ hash: img4x5.hash, adlabels: [{ name: label }] });
-    labelMap["4x5"] = label;
-  }
+  media.forEach((m, idx) => {
+    if (!m.hash) return;
 
-  // 9:16 이미지
-  if (img9x16?.hash) {
-    const label = `placement_asset_9x16_${timestamp}`;
-    const existing = images.find((img) => img.hash === img9x16.hash);
+    const slotType =
+      m.slot === "피드 이미지" ? "4x5"
+      : m.slot === "스토리 이미지" ? "9x16"
+      : m.slot === "릴스 이미지" ? "9x16reels"
+      : m.slot === "기본 이미지" ? "1x1"
+      : `img${idx}`;
+
+    const label = `placement_asset_${slotType}_${timestamp}`;
+
+    const existing = images.find((img) => img.hash === m.hash);
     if (existing) {
       existing.adlabels.push({ name: label });
     } else {
-      images.push({ hash: img9x16.hash, adlabels: [{ name: label }] });
+      images.push({ hash: m.hash, adlabels: [{ name: label }] });
     }
-    labelMap["9x16"] = label;
-  }
 
-  // 9:16 Reels 이미지
-  if (img9x16Reels?.hash) {
-    const label = `placement_asset_9x16reels_${timestamp}`;
-    const existing = images.find((img) => img.hash === img9x16Reels.hash);
-    if (existing) {
-      existing.adlabels.push({ name: label });
-    } else {
-      images.push({ hash: img9x16Reels.hash, adlabels: [{ name: label }] });
-    }
-    labelMap["9x16reels"] = label;
-  }
-
-  // 1:1 이미지
-  if (img1x1?.hash) {
-    const label = `placement_asset_1x1_${timestamp}`;
-    const existing = images.find((img) => img.hash === img1x1.hash);
-    if (existing) {
-      existing.adlabels.push({ name: label });
-    } else {
-      images.push({ hash: img1x1.hash, adlabels: [{ name: label }] });
-    }
-    labelMap["1x1"] = label;
-  }
+    labelMap[slotType] = label;
+  });
 
   if (images.length === 0) {
     throw new Error("No image hashes available");
