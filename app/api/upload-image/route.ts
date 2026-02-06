@@ -25,19 +25,26 @@ export async function POST(request: NextRequest) {
     const accessToken = config.access_token;
 
     if (mediaType === "video") {
+      // Meta API는 영상을 FormData로 업로드해야 함
+      const videoBuffer = Buffer.from(base64, "base64");
+      const blob = new Blob([videoBuffer]);
+
+      const formData = new FormData();
+      formData.append("access_token", accessToken);
+      formData.append("title", filename);
+      formData.append("source", blob, filename);
+
       const response = await fetch(`${GRAPH_API_BASE}/${adAccountId}/advideos`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          access_token: accessToken,
-          source: base64,
-          title: filename,
-        }),
+        body: formData,
       });
+
       const result = await response.json();
       if (result.error) {
-        throw new Error(result.error.error_user_msg || result.error.message);
+        console.error("Video upload error:", result.error);
+        throw new Error(result.error.error_user_msg || result.error.message || "Video upload failed");
       }
+
       return NextResponse.json({ videoId: result.id });
     }
 
