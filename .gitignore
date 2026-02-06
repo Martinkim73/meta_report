@@ -57,3 +57,4 @@ next-env.d.ts
 discord_report_data.json
 *업데이트 사항
 *토큰*
+.env*.local
