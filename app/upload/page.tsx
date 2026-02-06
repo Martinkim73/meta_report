@@ -532,26 +532,22 @@ export default function UploadPage() {
         (c) => c.name && c.body && c.title && c.media.every((m) => m.file)
       );
 
-      // Phase 1: 각 이미지/영상을 개별로 업로드 → 해시 수집
+      // Phase 1: 각 이미지/영상을 개별로 업로드 → 해시 수집 (FormData 사용!)
       const creativesPayload = await Promise.all(
         readyCreatives.map(async (c) => {
           const media = await Promise.all(
             c.media.map(async (m) => {
-              const buffer = await m.file!.arrayBuffer();
-              const bytes = new Uint8Array(buffer);
-              let binary = "";
-              bytes.forEach((b) => (binary += String.fromCharCode(b)));
-              const base64 = btoa(binary);
+              const mediaType = type === "VA" ? "video" : "image";
+
+              // FormData로 파일 직접 전송 (Base64 인코딩 없음 - Vercel 4.5MB 제한 우회)
+              const formData = new FormData();
+              formData.append("file", m.file!);
+              formData.append("clientName", selectedClient);
+              formData.append("mediaType", mediaType);
 
               const res = await fetch("/api/upload-image", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  clientName: selectedClient,
-                  base64,
-                  filename: m.file!.name,
-                  mediaType: type === "VA" ? "video" : "image",
-                }),
+                body: formData,  // Content-Type 자동 설정됨
               });
 
               const uploadResult = await res.json();
