@@ -416,22 +416,12 @@ async function createAdCreative(
     creativeData.applink_treatment = "automatic";
   }
 
-  // 🔍 DEBUG: Creative 생성 직전 데이터 확인
-  console.log("============ CREATIVE DATA DEBUG ============");
-  console.log("Creative Name:", creative.name);
-  console.log("url_tags:", creativeData.url_tags || "MISSING!");
-  console.log("Is Video:", isVideo);
-  console.log("Ad Account ID:", adAccountId);
-  console.log("Page ID:", config.page_id);
-  console.log("Instagram ID:", config.instagram_actor_id || "N/A");
-  console.log("Omnichannel:", omnichannel ? "YES" : "NO");
-  console.log("object_story_spec:", JSON.stringify(creativeData.object_story_spec, null, 2));
-  if (!isVideo) {
-    console.log("asset_feed_spec.images count:", (creativeData.asset_feed_spec as any)?.images?.length);
-    console.log("asset_customization_rules count:", (creativeData.asset_feed_spec as any)?.asset_customization_rules?.length);
-  }
-  console.log("Request Body (Full):", JSON.stringify(creativeData, null, 2));
-  console.log("===========================================");
+  // 🔍 DEBUG: Creative 생성 직전 데이터 확인 (필요 시 활성화)
+  // console.log("============ CREATIVE DATA DEBUG ============");
+  // console.log("Creative Name:", creative.name);
+  // console.log("url_tags:", creativeData.url_tags || "MISSING!");
+  // console.log("Is Video:", isVideo);
+  // console.log("===========================================");
 
   const response = await fetch(url, {
     method: "POST",
@@ -599,7 +589,6 @@ export async function POST(request: NextRequest) {
     const displayUrl = body.displayUrl || DEFAULT_DISPLAY_URL;
     const description = body.description || DEFAULT_DESCRIPTION;
     const urlTags = body.urlTags || "utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{adset.name}}__{{ad.name}}";
-    console.log('[DEBUG] urlTags:', urlTags);
 
     // Get client config
     const config = await getClient(clientName);
