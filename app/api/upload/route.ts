@@ -216,11 +216,30 @@ async function createAdCreative(
     }
 
     // asset_customization_rules 생성 (실제 작동하는 광고와 100% 동일)
+    // 각 규칙마다 image_label + body_label + link_url_label + title_label 필수
     const assetCustomizationRules: Record<string, unknown>[] = [];
     let priority = 1;
 
+    // 규칙별 body/link/title 라벨 생성 (7개 규칙)
+    const ruleLabels = {
+      r1: { body: `pa_body_story_${timestamp}`, link: `pa_link_story_${timestamp}`, title: `pa_title_story_${timestamp}` },
+      r2: { body: `pa_body_rhc_${timestamp}`, link: `pa_link_rhc_${timestamp}`, title: `pa_title_rhc_${timestamp}` },
+      r3: { body: `pa_body_fbfeed_${timestamp}`, link: `pa_link_fbfeed_${timestamp}`, title: `pa_title_fbfeed_${timestamp}` },
+      r4: { body: `pa_body_igfeed_${timestamp}`, link: `pa_link_igfeed_${timestamp}`, title: `pa_title_igfeed_${timestamp}` },
+      r5: { body: `pa_body_igreels_${timestamp}`, link: `pa_link_igreels_${timestamp}`, title: `pa_title_igreels_${timestamp}` },
+      r6: { body: `pa_body_fbreels_${timestamp}`, link: `pa_link_fbreels_${timestamp}`, title: `pa_title_fbreels_${timestamp}` },
+      r7: { body: `pa_body_default_${timestamp}`, link: `pa_link_default_${timestamp}`, title: `pa_title_default_${timestamp}` },
+    };
+
+    const allBodyLabels: { name: string }[] = [];
+    const allLinkLabels: { name: string }[] = [];
+    const allTitleLabels: { name: string }[] = [];
+
     // Rule 1: 9:16 → story (facebook, instagram, messenger, audience_network)
     if (labelMap["9x16"]) {
+      allBodyLabels.push({ name: ruleLabels.r1.body });
+      allLinkLabels.push({ name: ruleLabels.r1.link });
+      allTitleLabels.push({ name: ruleLabels.r1.title });
       assetCustomizationRules.push({
         customization_spec: {
           age_max: 65,
@@ -232,12 +251,18 @@ async function createAdCreative(
           audience_network_positions: ["classic"],
         },
         image_label: { name: labelMap["9x16"] },
+        body_label: { name: ruleLabels.r1.body },
+        link_url_label: { name: ruleLabels.r1.link },
+        title_label: { name: ruleLabels.r1.title },
         priority: priority++,
       });
     }
 
     // Rule 2: 1:1 → right_hand_column, search (facebook)
     if (labelMap["1x1"]) {
+      allBodyLabels.push({ name: ruleLabels.r2.body });
+      allLinkLabels.push({ name: ruleLabels.r2.link });
+      allTitleLabels.push({ name: ruleLabels.r2.title });
       assetCustomizationRules.push({
         customization_spec: {
           age_max: 65,
@@ -246,12 +271,18 @@ async function createAdCreative(
           facebook_positions: ["right_hand_column", "search"],
         },
         image_label: { name: labelMap["1x1"] },
+        body_label: { name: ruleLabels.r2.body },
+        link_url_label: { name: ruleLabels.r2.link },
+        title_label: { name: ruleLabels.r2.title },
         priority: priority++,
       });
     }
 
     // Rule 3: 4:5 → facebook feed
     if (labelMap["4x5"]) {
+      allBodyLabels.push({ name: ruleLabels.r3.body });
+      allLinkLabels.push({ name: ruleLabels.r3.link });
+      allTitleLabels.push({ name: ruleLabels.r3.title });
       assetCustomizationRules.push({
         customization_spec: {
           age_max: 65,
@@ -260,12 +291,18 @@ async function createAdCreative(
           facebook_positions: ["feed"],
         },
         image_label: { name: labelMap["4x5"] },
+        body_label: { name: ruleLabels.r3.body },
+        link_url_label: { name: ruleLabels.r3.link },
+        title_label: { name: ruleLabels.r3.title },
         priority: priority++,
       });
     }
 
     // Rule 4: 4:5 → instagram stream (피드)
     if (labelMap["4x5"]) {
+      allBodyLabels.push({ name: ruleLabels.r4.body });
+      allLinkLabels.push({ name: ruleLabels.r4.link });
+      allTitleLabels.push({ name: ruleLabels.r4.title });
       assetCustomizationRules.push({
         customization_spec: {
           age_max: 65,
@@ -274,12 +311,18 @@ async function createAdCreative(
           instagram_positions: ["stream"],
         },
         image_label: { name: labelMap["4x5"] },
+        body_label: { name: ruleLabels.r4.body },
+        link_url_label: { name: ruleLabels.r4.link },
+        title_label: { name: ruleLabels.r4.title },
         priority: priority++,
       });
     }
 
     // Rule 5: 9:16 Reels → instagram reels
     if (labelMap["9x16reels"]) {
+      allBodyLabels.push({ name: ruleLabels.r5.body });
+      allLinkLabels.push({ name: ruleLabels.r5.link });
+      allTitleLabels.push({ name: ruleLabels.r5.title });
       assetCustomizationRules.push({
         customization_spec: {
           age_max: 65,
@@ -288,12 +331,18 @@ async function createAdCreative(
           instagram_positions: ["reels"],
         },
         image_label: { name: labelMap["9x16reels"] },
+        body_label: { name: ruleLabels.r5.body },
+        link_url_label: { name: ruleLabels.r5.link },
+        title_label: { name: ruleLabels.r5.title },
         priority: priority++,
       });
     }
 
     // Rule 6: 9:16 Reels → facebook_reels
     if (labelMap["9x16reels"]) {
+      allBodyLabels.push({ name: ruleLabels.r6.body });
+      allLinkLabels.push({ name: ruleLabels.r6.link });
+      allTitleLabels.push({ name: ruleLabels.r6.title });
       assetCustomizationRules.push({
         customization_spec: {
           age_max: 65,
@@ -302,18 +351,27 @@ async function createAdCreative(
           facebook_positions: ["facebook_reels"],
         },
         image_label: { name: labelMap["9x16reels"] },
+        body_label: { name: ruleLabels.r6.body },
+        link_url_label: { name: ruleLabels.r6.link },
+        title_label: { name: ruleLabels.r6.title },
         priority: priority++,
       });
     }
 
     // Rule 7: 1:1 → 기본값 (나머지 모든 지면)
     if (labelMap["1x1"]) {
+      allBodyLabels.push({ name: ruleLabels.r7.body });
+      allLinkLabels.push({ name: ruleLabels.r7.link });
+      allTitleLabels.push({ name: ruleLabels.r7.title });
       assetCustomizationRules.push({
         customization_spec: {
           age_max: 65,
           age_min: 13,
         },
         image_label: { name: labelMap["1x1"] },
+        body_label: { name: ruleLabels.r7.body },
+        link_url_label: { name: ruleLabels.r7.link },
+        title_label: { name: ruleLabels.r7.title },
         priority: priority++,
       });
     }
@@ -327,13 +385,14 @@ async function createAdCreative(
       },
       asset_feed_spec: {
         images,
-        bodies: [{ text: creative.body }],
-        titles: [{ text: creative.title }],
+        bodies: [{ text: creative.body, adlabels: allBodyLabels }],
+        titles: [{ text: creative.title, adlabels: allTitleLabels }],
         descriptions: [{ text: description }],
         link_urls: [
           {
             website_url: websiteUrl,
             display_url: displayUrl,
+            adlabels: allLinkLabels,
           },
         ],
         call_to_action_types: ["LEARN_MORE"],
