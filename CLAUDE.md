@@ -184,18 +184,34 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
 - 테스트 완료: 광고 ID `120243254042170154`
 
 #### ✅ Stage 3: 옴니채널 (Web+App) 지원 (완료 - 2026.02.07)
-- **문제**: 에러 #1359187 "개체 스토어 URL 누락" - iOS/Android 딥링크 미설정
-- **해결**: `asset_feed_spec.link_urls[0]`에 `object_store_urls` 배열 추가
+- **해결한 에러**:
+  - ✅ #2446461: `omnichannel_link_spec`을 `asset_feed_spec.link_urls[0]` 내부로 이동
+  - ✅ #1359187: `object_store_urls`를 `link_urls[0]` 내부에 추가
+- **최종 구조** (PAC 옴니채널):
   ```typescript
-  object_store_urls: [
-    `http://itunes.apple.com/app/id${CODINGVALLEY_IOS_ID}`,
-    `http://play.google.com/store/apps/details?id=${CODINGVALLEY_ANDROID_PACKAGE}`,
-  ]
+  asset_feed_spec: {
+    link_urls: [{
+      website_url: websiteUrl,
+      display_url: displayUrl,
+      adlabels: allLinkLabels,
+      omnichannel_link_spec: {
+        web: { url: websiteUrl },
+        app: {
+          application_id: CODINGVALLEY_APP_ID,
+          platform_specs: { android: {...}, ios: {...} }
+        }
+      },
+      object_store_urls: [
+        "http://itunes.apple.com/app/id6448019090",
+        "http://play.google.com/store/apps/details?id=inc.ulift.cv"
+      ]
+    }]
+  }
   ```
-- **테스트 성공**:
-  - 옴니채널 광고: `120243254657080154`
-  - 웹 광고: `120243254726130154`
-- **참고**: `degrees_of_freedom_spec` 제거 (Error 3858504 - PAC 구조와 비호환)
+- **테스트 성공** (Meta 광고 관리자 에러 0개 확인):
+  - 옴니채널: `120243256487380154`, `120243256497780154`
+  - 웹: `120243256490520154`, `120243256503310154`
+- **핵심**: PAC 광고에서는 모든 링크 정보(`omnichannel_link_spec` + `object_store_urls`)를 `link_urls` 한 곳에 통합
 
 #### 🚧 Stage 4: Music 자동화 (예정)
 - 릴스/스토리 광고의 Music ID 자동 선택 기능
