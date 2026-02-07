@@ -180,6 +180,38 @@ async function createCreative(imageHashes, isOmni, adsetName) {
       }
     ];
 
+    const linkUrls = [{
+      website_url: 'https://www.codingvalley.com/ldm/7',
+      display_url: 'https://www.codingvalley.com',
+      adlabels: allLinkLabels
+    }];
+
+    // 옴니채널: omnichannel_link_spec + object_store_urls 둘 다 필요 (PAC 구조)
+    if (isOmni) {
+      linkUrls[0].omnichannel_link_spec = {
+        web: {
+          url: 'https://www.codingvalley.com/ldm/7'
+        },
+        app: {
+          application_id: '494894190077063',
+          platform_specs: {
+            android: {
+              app_name: '코딩밸리',
+              package_name: 'inc.ulift.cv'
+            },
+            ios: {
+              app_name: '코딩밸리',
+              app_store_id: '6448019090'
+            }
+          }
+        }
+      };
+      linkUrls[0].object_store_urls = [
+        'http://itunes.apple.com/app/id6448019090',
+        'http://play.google.com/store/apps/details?id=inc.ulift.cv'
+      ];
+    }
+
     const creativeData = {
       access_token: config.access_token,
       name: `OMNI_FIX_TEST_${ts}`,
@@ -193,11 +225,7 @@ async function createCreative(imageHashes, isOmni, adsetName) {
         bodies: [{ text: `옴니채널 테스트 ${isOmni ? 'OMNI' : 'WEB'}`, adlabels: allBodyLabels }],
         titles: [{ text: '테스트 타이틀', adlabels: allTitleLabels }],
         descriptions: [{ text: 'AI 시대 성공 전략, AI 코딩밸리' }],
-        link_urls: [{
-          website_url: 'https://www.codingvalley.com/ldm/7',
-          display_url: 'https://www.codingvalley.com',
-          adlabels: allLinkLabels
-        }],
+        link_urls: linkUrls,
         call_to_action_types: ['LEARN_MORE'],
         ad_formats: ['AUTOMATIC_FORMAT'],
         asset_customization_rules: rules,
@@ -207,18 +235,7 @@ async function createCreative(imageHashes, isOmni, adsetName) {
 
     if (isOmni) {
       creativeData.applink_treatment = 'automatic';
-      creativeData.omnichannel_link_spec = {
-        web: { url: 'https://www.codingvalley.com/ldm/7' },
-        app: {
-          application_id: '494894190077063',
-          platform_specs: {
-            android: { app_name: '코딩밸리', package_name: 'inc.ulift.cv' },
-            ios: { app_name: '코딩밸리', app_store_id: '6448019090' }
-          }
-        }
-      };
-
-      // degrees_of_freedom_spec 제거 (Subcode 3858504 에러 원인)
+      // omnichannel_link_spec은 link_urls 내부로 이동 (에러 #2446461 해결)
     }
 
     const url = `https://graph.facebook.com/v22.0/${config.ad_account_id}/adcreatives`;

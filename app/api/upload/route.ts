@@ -384,6 +384,39 @@ async function createAdCreative(
       });
     }
 
+    // link_urls 구조 생성 (옴니채널: omnichannel_link_spec + object_store_urls 모두 포함)
+    const linkUrls = [
+      {
+        website_url: websiteUrl,
+        display_url: displayUrl,
+        adlabels: allLinkLabels,
+        ...(omnichannel && {
+          omnichannel_link_spec: {
+            web: {
+              url: websiteUrl,
+            },
+            app: {
+              application_id: CODINGVALLEY_APP_ID,
+              platform_specs: {
+                android: {
+                  app_name: CODINGVALLEY_APP_NAME,
+                  package_name: CODINGVALLEY_ANDROID_PACKAGE,
+                },
+                ios: {
+                  app_name: CODINGVALLEY_APP_NAME,
+                  app_store_id: CODINGVALLEY_IOS_ID,
+                },
+              },
+            },
+          },
+          object_store_urls: [
+            `http://itunes.apple.com/app/id${CODINGVALLEY_IOS_ID}`,
+            `http://play.google.com/store/apps/details?id=${CODINGVALLEY_ANDROID_PACKAGE}`,
+          ],
+        }),
+      },
+    ];
+
     creativeData = {
       access_token: accessToken,
       name: creative.name,
@@ -397,13 +430,7 @@ async function createAdCreative(
         bodies: [{ text: creative.body, adlabels: allBodyLabels }],
         titles: [{ text: creative.title, adlabels: allTitleLabels }],
         descriptions: [{ text: description }],
-        link_urls: [
-          {
-            website_url: websiteUrl,
-            display_url: displayUrl,
-            adlabels: allLinkLabels,
-          },
-        ],
+        link_urls: linkUrls,
         call_to_action_types: ["LEARN_MORE"],
         ad_formats: ["AUTOMATIC_FORMAT"],
         ...(assetCustomizationRules.length > 0 && { asset_customization_rules: assetCustomizationRules }),
@@ -413,38 +440,10 @@ async function createAdCreative(
 
   }
 
-  // 옴니채널 광고: 웹&앱 연결 구조 추가
+  // 옴니채널 광고: applink_treatment 추가
+  // omnichannel_link_spec은 asset_feed_spec.link_urls 내부로 이동 (PAC 구조 요구사항)
   if (omnichannel) {
     creativeData.applink_treatment = "automatic";
-
-    // omnichannel_link_spec: 웹 + iOS/Android 앱 정보
-    creativeData.omnichannel_link_spec = {
-      web: {
-        url: generateUtmUrl(creative.name, adsetName, landingUrl),
-      },
-      app: {
-        application_id: CODINGVALLEY_APP_ID,
-        platform_specs: {
-          android: {
-            app_name: CODINGVALLEY_APP_NAME,
-            package_name: CODINGVALLEY_ANDROID_PACKAGE,
-          },
-          ios: {
-            app_name: CODINGVALLEY_APP_NAME,
-            app_store_id: CODINGVALLEY_IOS_ID,
-          },
-        },
-      },
-    };
-
-    // ⚠️ degrees_of_freedom_spec 제거
-    // Subcode 3858504: "기본 개선 사항 필드를 포함하는 기능이 지원 중단되었습니다"
-    // PAC(Placement Asset Customization) 구조와 함께 사용 불가
-    //
-    // 마케팅 영향: 없음
-    // - 우리는 이미 4개 비율 이미지를 수동으로 지면별 매칭 중
-    // - standard_enhancements는 메타 AI가 이미지를 자동 수정하는 기능
-    // - 오히려 제거하면 우리가 만든 소재가 그대로 노출되어 더 정확함
   }
 
   // 🔍 DEBUG: Creative 생성 직전 데이터 확인 (필요 시 활성화)

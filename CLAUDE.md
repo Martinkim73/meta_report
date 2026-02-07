@@ -169,9 +169,41 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
 }
 ```
 
-## 현재 상태 (2026.02.06 최종)
+## 현재 상태 (2026.02.07 최종)
 
-### 🎯 오늘 완료된 핵심 수정 (2026.02.06 저녁)
+### 🎯 4단계 추가 개발 진행 상황
+
+#### ✅ Stage 1: 롤백 시스템 (완료)
+- `version-web-success` 브랜치 생성 (안전 백업)
+- `backups/` 폴더에 파일 백업
+- `ROLLBACK_GUIDE.md` 롤백 가이드 작성
+
+#### ✅ Stage 2: URL 매개변수 자동화 (완료)
+- `urlTags` 필드 추가 (기본값: `utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{adset.name}}__{{ad.name}}`)
+- UI 입력창 추가 + API 적용 완료
+- 테스트 완료: 광고 ID `120243254042170154`
+
+#### ✅ Stage 3: 옴니채널 (Web+App) 지원 (완료 - 2026.02.07)
+- **문제**: 에러 #1359187 "개체 스토어 URL 누락" - iOS/Android 딥링크 미설정
+- **해결**: `asset_feed_spec.link_urls[0]`에 `object_store_urls` 배열 추가
+  ```typescript
+  object_store_urls: [
+    `http://itunes.apple.com/app/id${CODINGVALLEY_IOS_ID}`,
+    `http://play.google.com/store/apps/details?id=${CODINGVALLEY_ANDROID_PACKAGE}`,
+  ]
+  ```
+- **테스트 성공**:
+  - 옴니채널 광고: `120243254657080154`
+  - 웹 광고: `120243254726130154`
+- **참고**: `degrees_of_freedom_spec` 제거 (Error 3858504 - PAC 구조와 비호환)
+
+#### 🚧 Stage 4: Music 자동화 (예정)
+- 릴스/스토리 광고의 Music ID 자동 선택 기능
+- Music ID 프리셋 관리
+
+---
+
+### 🎯 이전 완료 사항 (2026.02.06)
 1. **DA Creative instagram_user_id 수정** ✅
    - `instagram_actor_id` → `instagram_user_id` (asset_feed_spec 사용 시)
    - `/api/upload/route.ts`, `/api/ads/update/route.ts` 모두 적용
@@ -184,13 +216,7 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
    - 실제 작동하는 광고(ID: 120240900675440154) 구조 100% 복사
    - **결과**: "Facebook 피드/Instagram 릴스 이미지 요구사항 불충족" 에러 해결
 
-3. **옴니채널 Creative 수정** ✅
-   - `omnichannel_link_spec` 삭제 (불필요)
-   - `degrees_of_freedom_spec` 추가 (Meta 필수)
-   - 실제 옴니채널 광고(ID: 120242864861650154) 구조 분석 후 적용
-   - **결과**: 에러 #1359187 "개체 스토어 URL 누락" 해결
-
-4. **토큰 관리 시스템 구축** ✅
+3. **토큰 관리 시스템 구축** ✅
    - `update_token.cjs`: temp_token.txt → Redis 업데이트
    - `sync_env_to_redis.cjs`: .env → Redis 자동 동기화
    - `.env.example`: 토큰 백업/마이그레이션 가이드
@@ -362,10 +388,9 @@ priority 7: 1:1       → 기본값 (나머지 모든 지면)
   - Meta API는 서버 간 통신만 허용
 - **보안**: Access Token을 서버 환경변수에 저장 (Redis 권장)
   - localStorage 사용 시 XSS 공격 위험
-- **Omnichannel (web+app) 광고 제한** (2026.02.06 조사 완료)
-  - 현재 `/api/upload/route.ts`는 웹 전용 광고만 지원 (line 431 필터링)
-  - Omnichannel adset에는 복잡한 tracking_specs/conversion_specs 필요
-  - Meta API error 2446461 "omnichannel_link_spec required" - 오해의 소지 있는 에러
-  - 실제 문제: web+app 추적 설정, 4개 이미지 해시 필요 (단일 해시 불충분)
-  - **해결책**: web&app 캠페인용 별도 엔드포인트 구현 필요
-  - **현재 상태**: 웹 전용 광고는 완벽히 작동 ✅
+- **Omnichannel (web+app) 광고 지원 완료** ✅ (2026.02.07)
+  - `asset_feed_spec.link_urls`에 `object_store_urls` 추가로 해결
+  - iOS/Android 딥링크 자동 설정 (CODINGVALLEY_IOS_ID, CODINGVALLEY_ANDROID_PACKAGE)
+  - `omnichannel_link_spec` + `applink_treatment: "automatic"` 적용
+  - `degrees_of_freedom_spec` 제거 (PAC 구조와 비호환)
+  - **테스트 완료**: 옴니채널 광고 `120243254657080154`, 웹 광고 `120243254726130154`
