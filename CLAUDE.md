@@ -5,6 +5,11 @@
 - Branch: main
 - 작업 완료 후 항상 commit + push origin main 수행할 것
 
+## 🛡️ 롤백 시스템 (Rollback)
+- **안전 백업 브랜치**: `version-web-success` (웹 캠페인 완벽 작동 버전)
+- **복구 가이드**: `backups/ROLLBACK_GUIDE.md` 참조
+- **문제 발생 시**: `git checkout version-web-success` 즉시 복구
+
 ## 빠른 시작 (새 환경에서)
 ```bash
 # 1. 프로젝트 클론 (OneDrive 바깥 경로 권장)
