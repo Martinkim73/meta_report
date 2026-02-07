@@ -1,0 +1,521 @@
+{
+  "id": "120242864833540154",
+  "name": "branding_onedaytenminute_260129_img",
+  "adset": {
+    "id": "120241978972260154",
+    "name": "broad_purchase_n_DA_251212",
+    "promoted_object": {
+      "mcme_conversion_id": "1110601623700587",
+      "omnichannel_object": {
+        "app": [
+          {
+            "application_id": "494894190077063",
+            "custom_event_type": "PURCHASE",
+            "object_store_urls": [
+              "http://itunes.apple.com/app/id6448019090",
+              "http://play.google.com/store/apps/details?id=inc.ulift.cv"
+            ]
+          }
+        ],
+        "pixel": [
+          {
+            "pixel_id": "3708410246054745",
+            "custom_event_type": "PURCHASE"
+          }
+        ]
+      }
+    }
+  },
+  "creative": {
+    "id": "887762534123968",
+    "name": "{{product.name}} 2026-02-05-5c3788856efb5c5d64163387ea9c1a05",
+    "url_tags": "utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{adset.name}}__{{ad.name}}",
+    "applink_treatment": "automatic",
+    "object_story_spec": {
+      "page_id": "101207062967934",
+      "instagram_user_id": "17841459147478114"
+    },
+    "asset_feed_spec": {
+      "images": [
+        {
+          "adlabels": [
+            {
+              "name": "placement_asset_feee23b8ffd326bdf_1770359129663",
+              "id": "120243198980810154"
+            },
+            {
+              "name": "placement_asset_f7f36fa4fc4bfdff5_1770358978409",
+              "id": "120243198980830154"
+            }
+          ],
+          "hash": "103cd2d1920d1b2fa0d4063ac6bc4756"
+        },
+        {
+          "adlabels": [
+            {
+              "name": "placement_asset_fd9254de0e2d8edbd_1770359129655",
+              "id": "120243198980770154"
+            }
+          ],
+          "hash": "e1559407b80c3b34c11456d298ff3f72"
+        },
+        {
+          "adlabels": [
+            {
+              "name": "placement_asset_f991936258ec7f7e5_1770359143078",
+              "id": "120243199000570154"
+            },
+            {
+              "name": "placement_asset_f5d0e6b2e392cce06_1770359156311",
+              "id": "120243199007640154"
+            }
+          ],
+          "hash": "ed2e2e1de242dc0150a25e7d56d4772a"
+        },
+        {
+          "adlabels": [
+            {
+              "name": "placement_asset_f365d35b3a801bbc9_1770359170841",
+              "id": "120243199011650154"
+            },
+            {
+              "name": "placement_asset_f7604a0837beffd92_1770359180834",
+              "id": "120243199015050154"
+            }
+          ],
+          "hash": "90cd07b8a4912983d9875d278b9a473e"
+        }
+      ],
+      "bodies": [
+        {
+          "adlabels": [
+            {
+              "name": "placement_asset_fa13b22ef8e3fcc8d_1770359129661",
+              "id": "120243198980780154"
+            },
+            {
+              "name": "placement_asset_fccc2460064fa83d9_1770358978418",
+              "id": "120243198980790154"
+            },
+            {
+              "name": "placement_asset_fd3e4be7f8cff8669_1770359129666",
+              "id": "120243198980800154"
+            },
+            {
+              "name": "placement_asset_f9456b2c992d45db9_1770358978424",
+              "id": "120243198980820154"
+            },
+            {
+              "name": "placement_asset_fd4e2274d73fa3bda_1770359143079",
+              "id": "120243199000550154"
+            },
+            {
+              "name": "placement_asset_ffe04a47545f10ebb_1770359156312",
+              "id": "120243199007650154"
+            },
+            {
+              "name": "placement_asset_f0028b6858ad6978e_1770359170842",
+              "id": "120243199011630154"
+            },
+            {
+              "name": "placement_asset_f7cd6cae97bc55198_1770359180835",
+              "id": "120243199015040154"
+            }
+          ],
+          "text": "😎내 상황에 맞는 AI툴 뭐 써야 하지?\nAI 코딩밸리가 목적별 최적의 AI를 알려드려요\n\n📢 설날맞이 이벤트 진행 중 (~2/18)\n연휴 특별한 혜택, 푸짐~하게 받아가세요!\n[60일 추가이용권]+[더블 할인혜택] 증정🎁\n\n🚀 AI시대 성공하려면? → AI 코딩밸리\n업무 자동화로 → 10시간 업무를 1시간에\n수익형 웹 서비스로 → 부수입 창출\n나혼자 바이브코딩 → AI 주식 대시보드 뚝딱\n\n🔥AI & 코딩, 2주 정복 학습법\n학습 드라마 → 재미있게 개념 이해!\n쉬운 강의 →AI부터 파이썬까지!\nAI 모바일 실습 →설치없이 챗GPT 실습\n\n🎁지금 [74% 할인] + [추가할인 쿠폰] 등 \n푸짐한 이벤트 혜택 놓치지 마세요!\n\n#AI코딩밸리 #업무자동화 #바이브코딩 #챗GPT #gemini #나노바나나 #nanobanana#AI강의 #AI학습 #파이썬 #설날이벤트"
+        }
+      ],
+      "call_to_action_types": [
+        "LEARN_MORE"
+      ],
+      "descriptions": [
+        {
+          "text": "AI 시대 성공 전략, AI 코딩밸리"
+        }
+      ],
+      "link_urls": [
+        {
+          "adlabels": [
+            {
+              "name": "placement_asset_f5ff3a7678d89bc9e_1770359129662",
+              "id": "120243198980700154"
+            },
+            {
+              "name": "placement_asset_fc66c8781288e5c71_1770358978422",
+              "id": "120243198980710154"
+            },
+            {
+              "name": "placement_asset_f026c4f55748b55f3_1770358978425",
+              "id": "120243198980720154"
+            },
+            {
+              "name": "placement_asset_f322af2af15634ec1_1770359129667",
+              "id": "120243198980730154"
+            },
+            {
+              "name": "placement_asset_f90de8dcd6d74955b_1770359143079",
+              "id": "120243199000560154"
+            },
+            {
+              "name": "placement_asset_f2955109e916b154d_1770359156312",
+              "id": "120243199007620154"
+            },
+            {
+              "name": "placement_asset_fea3635ba89a8aee4_1770359170842",
+              "id": "120243199011640154"
+            },
+            {
+              "name": "placement_asset_f1f97de140199c1ab_1770359180835",
+              "id": "120243199015060154"
+            }
+          ],
+          "website_url": "https://www.codingvalley.com/ldm/7",
+          "display_url": "https://www.codingvalley.com"
+        }
+      ],
+      "titles": [
+        {
+          "adlabels": [
+            {
+              "name": "placement_asset_fed8b547f1921eae7_1770358978421",
+              "id": "120243198980740154"
+            },
+            {
+              "name": "placement_asset_f272d6bc4f573ce77_1770359129662",
+              "id": "120243198980750154"
+            },
+            {
+              "name": "placement_asset_f9c6c80cdf66ce384_1770358978424",
+              "id": "120243198980760154"
+            },
+            {
+              "name": "placement_asset_fb4c469efd2f4b814_1770359129666",
+              "id": "120243198980840154"
+            },
+            {
+              "name": "placement_asset_f36eb64e23012e1cd_1770359143079",
+              "id": "120243199000580154"
+            },
+            {
+              "name": "placement_asset_f2a45f974ee53089c_1770359156312",
+              "id": "120243199007630154"
+            },
+            {
+              "name": "placement_asset_f7cd0cc19051decae_1770359170842",
+              "id": "120243199011620154"
+            },
+            {
+              "name": "placement_asset_fe52ae075b825feef_1770359180835",
+              "id": "120243199015070154"
+            }
+          ],
+          "text": "🔥 지금 무료체험 + 74% 할인!"
+        }
+      ],
+      "ad_formats": [
+        "AUTOMATIC_FORMAT"
+      ],
+      "asset_customization_rules": [
+        {
+          "customization_spec": {
+            "age_max": 65,
+            "age_min": 13,
+            "publisher_platforms": [
+              "facebook",
+              "instagram"
+            ],
+            "facebook_positions": [
+              "story"
+            ],
+            "instagram_positions": [
+              "ig_search",
+              "profile_reels",
+              "story"
+            ]
+          },
+          "image_label": {
+            "name": "placement_asset_fd9254de0e2d8edbd_1770359129655",
+            "id": "120243198980770154"
+          },
+          "body_label": {
+            "name": "placement_asset_fa13b22ef8e3fcc8d_1770359129661",
+            "id": "120243198980780154"
+          },
+          "link_url_label": {
+            "name": "placement_asset_f5ff3a7678d89bc9e_1770359129662",
+            "id": "120243198980700154"
+          },
+          "title_label": {
+            "name": "placement_asset_f272d6bc4f573ce77_1770359129662",
+            "id": "120243198980750154"
+          },
+          "priority": 1
+        },
+        {
+          "customization_spec": {
+            "age_max": 65,
+            "age_min": 13,
+            "publisher_platforms": [
+              "facebook"
+            ],
+            "facebook_positions": [
+              "right_hand_column",
+              "search"
+            ]
+          },
+          "image_label": {
+            "name": "placement_asset_feee23b8ffd326bdf_1770359129663",
+            "id": "120243198980810154"
+          },
+          "body_label": {
+            "name": "placement_asset_fd3e4be7f8cff8669_1770359129666",
+            "id": "120243198980800154"
+          },
+          "link_url_label": {
+            "name": "placement_asset_f322af2af15634ec1_1770359129667",
+            "id": "120243198980730154"
+          },
+          "title_label": {
+            "name": "placement_asset_fb4c469efd2f4b814_1770359129666",
+            "id": "120243198980840154"
+          },
+          "priority": 2
+        },
+        {
+          "customization_spec": {
+            "age_max": 65,
+            "age_min": 13,
+            "publisher_platforms": [
+              "facebook"
+            ],
+            "facebook_positions": [
+              "feed"
+            ]
+          },
+          "image_label": {
+            "name": "placement_asset_f991936258ec7f7e5_1770359143078",
+            "id": "120243199000570154"
+          },
+          "body_label": {
+            "name": "placement_asset_fd4e2274d73fa3bda_1770359143079",
+            "id": "120243199000550154"
+          },
+          "link_url_label": {
+            "name": "placement_asset_f90de8dcd6d74955b_1770359143079",
+            "id": "120243199000560154"
+          },
+          "title_label": {
+            "name": "placement_asset_f36eb64e23012e1cd_1770359143079",
+            "id": "120243199000580154"
+          },
+          "priority": 3
+        },
+        {
+          "customization_spec": {
+            "age_max": 65,
+            "age_min": 13,
+            "publisher_platforms": [
+              "instagram"
+            ],
+            "instagram_positions": [
+              "stream"
+            ]
+          },
+          "image_label": {
+            "name": "placement_asset_f5d0e6b2e392cce06_1770359156311",
+            "id": "120243199007640154"
+          },
+          "body_label": {
+            "name": "placement_asset_ffe04a47545f10ebb_1770359156312",
+            "id": "120243199007650154"
+          },
+          "link_url_label": {
+            "name": "placement_asset_f2955109e916b154d_1770359156312",
+            "id": "120243199007620154"
+          },
+          "title_label": {
+            "name": "placement_asset_f2a45f974ee53089c_1770359156312",
+            "id": "120243199007630154"
+          },
+          "priority": 4
+        },
+        {
+          "customization_spec": {
+            "age_max": 65,
+            "age_min": 13,
+            "publisher_platforms": [
+              "instagram"
+            ],
+            "instagram_positions": [
+              "reels"
+            ]
+          },
+          "image_label": {
+            "name": "placement_asset_f365d35b3a801bbc9_1770359170841",
+            "id": "120243199011650154"
+          },
+          "body_label": {
+            "name": "placement_asset_f0028b6858ad6978e_1770359170842",
+            "id": "120243199011630154"
+          },
+          "link_url_label": {
+            "name": "placement_asset_fea3635ba89a8aee4_1770359170842",
+            "id": "120243199011640154"
+          },
+          "title_label": {
+            "name": "placement_asset_f7cd0cc19051decae_1770359170842",
+            "id": "120243199011620154"
+          },
+          "priority": 5
+        },
+        {
+          "customization_spec": {
+            "age_max": 65,
+            "age_min": 13,
+            "publisher_platforms": [
+              "facebook"
+            ],
+            "facebook_positions": [
+              "facebook_reels"
+            ]
+          },
+          "image_label": {
+            "name": "placement_asset_f7604a0837beffd92_1770359180834",
+            "id": "120243199015050154"
+          },
+          "body_label": {
+            "name": "placement_asset_f7cd6cae97bc55198_1770359180835",
+            "id": "120243199015040154"
+          },
+          "link_url_label": {
+            "name": "placement_asset_f1f97de140199c1ab_1770359180835",
+            "id": "120243199015060154"
+          },
+          "title_label": {
+            "name": "placement_asset_fe52ae075b825feef_1770359180835",
+            "id": "120243199015070154"
+          },
+          "priority": 6
+        },
+        {
+          "customization_spec": {
+            "age_max": 65,
+            "age_min": 13
+          },
+          "image_label": {
+            "name": "placement_asset_f7f36fa4fc4bfdff5_1770358978409",
+            "id": "120243198980830154"
+          },
+          "body_label": {
+            "name": "placement_asset_fccc2460064fa83d9_1770358978418",
+            "id": "120243198980790154"
+          },
+          "link_url_label": {
+            "name": "placement_asset_fc66c8781288e5c71_1770358978422",
+            "id": "120243198980710154"
+          },
+          "title_label": {
+            "name": "placement_asset_fed8b547f1921eae7_1770358978421",
+            "id": "120243198980740154"
+          },
+          "priority": 7
+        }
+      ],
+      "optimization_type": "PLACEMENT",
+      "additional_data": {
+        "multi_share_end_card": false,
+        "is_click_to_message": false
+      },
+      "reasons_to_shop": false,
+      "shops_bundle": false
+    },
+    "degrees_of_freedom_spec": {
+      "creative_features_spec": {
+        "advantage_plus_creative": {
+          "enroll_status": "OPT_OUT"
+        },
+        "cv_transformation": {
+          "enroll_status": "OPT_OUT"
+        },
+        "enhance_cta": {
+          "enroll_status": "OPT_OUT",
+          "customizations": {
+            "text_extraction": {
+              "enroll_status": "OPT_OUT"
+            }
+          }
+        },
+        "image_animation": {
+          "enroll_status": "OPT_OUT"
+        },
+        "image_brightness_and_contrast": {
+          "enroll_status": "OPT_OUT"
+        },
+        "image_templates": {
+          "enroll_status": "OPT_OUT"
+        },
+        "image_touchups": {
+          "enroll_status": "OPT_OUT"
+        },
+        "inline_comment": {
+          "enroll_status": "OPT_IN"
+        },
+        "pac_relaxation": {
+          "enroll_status": "OPT_OUT"
+        },
+        "product_extensions": {
+          "enroll_status": "OPT_OUT",
+          "customizations": {
+            "pe_carousel": {
+              "enroll_status": "OPT_OUT"
+            }
+          }
+        },
+        "replace_media_text": {
+          "enroll_status": "OPT_OUT"
+        },
+        "reveal_details_over_time": {
+          "enroll_status": "OPT_IN"
+        },
+        "show_destination_blurbs": {
+          "enroll_status": "OPT_IN"
+        },
+        "show_summary": {
+          "enroll_status": "OPT_IN"
+        },
+        "site_extensions": {
+          "enroll_status": "OPT_OUT"
+        },
+        "standard_enhancements": {
+          "enroll_status": "OPT_IN"
+        },
+        "text_optimizations": {
+          "enroll_status": "OPT_OUT",
+          "customizations": {
+            "text_extraction": {
+              "enroll_status": "OPT_OUT"
+            }
+          }
+        }
+      }
+    },
+    "omnichannel_link_spec": {
+      "web": {
+        "url": "https://www.codingvalley.com/ldm/7"
+      },
+      "app": {
+        "application_id": "494894190077063",
+        "platform_specs": {
+          "android": {
+            "app_name": "코딩밸리",
+            "package_name": "inc.ulift.cv"
+          },
+          "ios": {
+            "app_name": "코딩밸리",
+            "app_store_id": "6448019090"
+          }
+        }
+      }
+    }
+  }
+}

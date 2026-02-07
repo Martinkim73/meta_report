@@ -58,8 +58,11 @@ const DEFAULT_DESCRIPTION = "AI 시대 성공 전략, AI 코딩밸리";
 // AI코딩밸리 Instagram 계정 ID (ai_codingvalley)
 const AI_CODINGVALLEY_INSTAGRAM_ID = "17841459147478114";
 
-// 코딩밸리 모바일앱 ID
-const CODINGVALLEY_APP_ID = "1095821498597595";
+// 코딩밸리 모바일앱 정보
+const CODINGVALLEY_APP_ID = "494894190077063";  // Meta application_id
+const CODINGVALLEY_IOS_ID = "6448019090";       // App Store ID
+const CODINGVALLEY_ANDROID_PACKAGE = "inc.ulift.cv";  // Android package name
+const CODINGVALLEY_APP_NAME = "코딩밸리";
 
 // Instagram business account 조회
 async function getInstagramActorId(accessToken: string, pageId: string): Promise<string | null> {
@@ -410,10 +413,61 @@ async function createAdCreative(
 
   }
 
-  // 옴니채널 광고: applink_treatment만 설정
-  // NOTE: degrees_of_freedom_spec의 standard_enhancements는 지원 중단됨 (Subcode 3858504)
+  // 옴니채널 광고: 웹&앱 연결 구조 추가
   if (omnichannel) {
     creativeData.applink_treatment = "automatic";
+
+    // omnichannel_link_spec: 웹 + iOS/Android 앱 정보
+    creativeData.omnichannel_link_spec = {
+      web: {
+        url: generateUtmUrl(creative.name, adsetName, landingUrl),
+      },
+      app: {
+        application_id: CODINGVALLEY_APP_ID,
+        platform_specs: {
+          android: {
+            app_name: CODINGVALLEY_APP_NAME,
+            package_name: CODINGVALLEY_ANDROID_PACKAGE,
+          },
+          ios: {
+            app_name: CODINGVALLEY_APP_NAME,
+            app_store_id: CODINGVALLEY_IOS_ID,
+          },
+        },
+      },
+    };
+
+    // degrees_of_freedom_spec: 정답 광고와 동일한 설정
+    creativeData.degrees_of_freedom_spec = {
+      creative_features_spec: {
+        advantage_plus_creative: { enroll_status: "OPT_OUT" },
+        cv_transformation: { enroll_status: "OPT_OUT" },
+        enhance_cta: {
+          enroll_status: "OPT_OUT",
+          customizations: { text_extraction: { enroll_status: "OPT_OUT" } },
+        },
+        image_animation: { enroll_status: "OPT_OUT" },
+        image_brightness_and_contrast: { enroll_status: "OPT_OUT" },
+        image_templates: { enroll_status: "OPT_OUT" },
+        image_touchups: { enroll_status: "OPT_OUT" },
+        inline_comment: { enroll_status: "OPT_IN" },
+        pac_relaxation: { enroll_status: "OPT_OUT" },
+        product_extensions: {
+          enroll_status: "OPT_OUT",
+          customizations: { pe_carousel: { enroll_status: "OPT_OUT" } },
+        },
+        replace_media_text: { enroll_status: "OPT_OUT" },
+        reveal_details_over_time: { enroll_status: "OPT_IN" },
+        show_destination_blurbs: { enroll_status: "OPT_IN" },
+        show_summary: { enroll_status: "OPT_IN" },
+        site_extensions: { enroll_status: "OPT_OUT" },
+        standard_enhancements: { enroll_status: "OPT_IN" },
+        text_optimizations: {
+          enroll_status: "OPT_OUT",
+          customizations: { text_extraction: { enroll_status: "OPT_OUT" } },
+        },
+      },
+    };
   }
 
   // 🔍 DEBUG: Creative 생성 직전 데이터 확인 (필요 시 활성화)
