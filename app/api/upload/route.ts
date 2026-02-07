@@ -437,37 +437,14 @@ async function createAdCreative(
       },
     };
 
-    // degrees_of_freedom_spec: 정답 광고와 동일한 설정
-    creativeData.degrees_of_freedom_spec = {
-      creative_features_spec: {
-        advantage_plus_creative: { enroll_status: "OPT_OUT" },
-        cv_transformation: { enroll_status: "OPT_OUT" },
-        enhance_cta: {
-          enroll_status: "OPT_OUT",
-          customizations: { text_extraction: { enroll_status: "OPT_OUT" } },
-        },
-        image_animation: { enroll_status: "OPT_OUT" },
-        image_brightness_and_contrast: { enroll_status: "OPT_OUT" },
-        image_templates: { enroll_status: "OPT_OUT" },
-        image_touchups: { enroll_status: "OPT_OUT" },
-        inline_comment: { enroll_status: "OPT_IN" },
-        pac_relaxation: { enroll_status: "OPT_OUT" },
-        product_extensions: {
-          enroll_status: "OPT_OUT",
-          customizations: { pe_carousel: { enroll_status: "OPT_OUT" } },
-        },
-        replace_media_text: { enroll_status: "OPT_OUT" },
-        reveal_details_over_time: { enroll_status: "OPT_IN" },
-        show_destination_blurbs: { enroll_status: "OPT_IN" },
-        show_summary: { enroll_status: "OPT_IN" },
-        site_extensions: { enroll_status: "OPT_OUT" },
-        standard_enhancements: { enroll_status: "OPT_IN" },
-        text_optimizations: {
-          enroll_status: "OPT_OUT",
-          customizations: { text_extraction: { enroll_status: "OPT_OUT" } },
-        },
-      },
-    };
+    // ⚠️ degrees_of_freedom_spec 제거
+    // Subcode 3858504: "기본 개선 사항 필드를 포함하는 기능이 지원 중단되었습니다"
+    // PAC(Placement Asset Customization) 구조와 함께 사용 불가
+    //
+    // 마케팅 영향: 없음
+    // - 우리는 이미 4개 비율 이미지를 수동으로 지면별 매칭 중
+    // - standard_enhancements는 메타 AI가 이미지를 자동 수정하는 기능
+    // - 오히려 제거하면 우리가 만든 소재가 그대로 노출되어 더 정확함
   }
 
   // 🔍 DEBUG: Creative 생성 직전 데이터 확인 (필요 시 활성화)
