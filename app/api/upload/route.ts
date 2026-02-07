@@ -419,6 +419,7 @@ async function createAdCreative(
   // 🔍 DEBUG: Creative 생성 직전 데이터 확인
   console.log("============ CREATIVE DATA DEBUG ============");
   console.log("Creative Name:", creative.name);
+  console.log("url_tags:", creativeData.url_tags || "MISSING!");
   console.log("Is Video:", isVideo);
   console.log("Ad Account ID:", adAccountId);
   console.log("Page ID:", config.page_id);
@@ -598,6 +599,7 @@ export async function POST(request: NextRequest) {
     const displayUrl = body.displayUrl || DEFAULT_DISPLAY_URL;
     const description = body.description || DEFAULT_DESCRIPTION;
     const urlTags = body.urlTags || "utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{adset.name}}__{{ad.name}}";
+    console.log('[DEBUG] urlTags:', urlTags);
 
     // Get client config
     const config = await getClient(clientName);
