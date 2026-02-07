@@ -156,7 +156,8 @@ async function createNewCreative(
   // 이미지와 영상 분리
   const images: { hash: string; adlabels: { name: string }[] }[] = [];
   const videos: { video_id: string; adlabels: { name: string }[] }[] = [];
-  const labelMap: Record<string, string> = {};
+  const labelMap: Record<string, string> = {}; // VA용
+  const hashMap: Record<string, string> = {}; // DA용
   const isVideo = media.some((m) => m.mediaType === "video");
 
   media.forEach((m, idx) => {
@@ -183,7 +184,7 @@ async function createNewCreative(
 
     if (!m.hash) return;
 
-    // DA: 이미지
+    // DA: 슬롯별 해시 수집 (images는 DA 규칙 블록에서 구성)
     const slotType =
       m.slot === "4:5 피드" ? "4x5"
       : m.slot === "피드 이미지" ? "4x5"
@@ -193,21 +194,11 @@ async function createNewCreative(
       : m.slot === "릴스 이미지" ? "9x16reels"
       : m.slot === "1:1 기본" ? "1x1"
       : m.slot === "기본 이미지" ? "1x1"
-      : `img${idx}`;
-
-    const label = `placement_asset_${slotType}_${timestamp}`;
-
-    const existing = images.find((img) => img.hash === m.hash);
-    if (existing) {
-      existing.adlabels.push({ name: label });
-    } else {
-      images.push({ hash: m.hash, adlabels: [{ name: label }] });
-    }
-
-    labelMap[slotType] = label;
+      : null;
+    if (slotType) hashMap[slotType] = m.hash;
   });
 
-  if (images.length === 0 && videos.length === 0) {
+  if (Object.keys(hashMap).length === 0 && videos.length === 0) {
     throw new Error("이미지 또는 영상이 필요합니다");
   }
 
@@ -215,6 +206,9 @@ async function createNewCreative(
   const assetCustomizationRules: Record<string, unknown>[] = [];
   let priority = 1;
   const assetLabelKey = isVideo ? "video_label" : "image_label";
+  const allBodyLabels: { name: string }[] = [];
+  const allLinkLabels: { name: string }[] = [];
+  const allTitleLabels: { name: string }[] = [];
 
   if (isVideo) {
     // VA 영상 규칙 - 정상 작동하는 광고와 동일한 구조 (4개 규칙만)
@@ -275,75 +269,161 @@ async function createNewCreative(
       });
     }
   } else {
-    // DA 이미지 규칙 (4슬롯: 4x5, 9x16, 9x16reels, 1x1)
-    // Rule 1: 9:16 → story, ig_search, profile_reels
-    if (labelMap["9x16"]) {
+    // DA 이미지 규칙 - 정답 광고 구조 100% 복제 (7개 규칙, 고유 라벨)
+    const ruleLabels = {
+      r1: { img: `pa_img_9x16_story_${timestamp}`, body: `pa_body_story_${timestamp}`, link: `pa_link_story_${timestamp}`, title: `pa_title_story_${timestamp}` },
+      r2: { img: `pa_img_1x1_rhc_${timestamp}`, body: `pa_body_rhc_${timestamp}`, link: `pa_link_rhc_${timestamp}`, title: `pa_title_rhc_${timestamp}` },
+      r3: { img: `pa_img_4x5_fbfeed_${timestamp}`, body: `pa_body_fbfeed_${timestamp}`, link: `pa_link_fbfeed_${timestamp}`, title: `pa_title_fbfeed_${timestamp}` },
+      r4: { img: `pa_img_4x5_igstream_${timestamp}`, body: `pa_body_igfeed_${timestamp}`, link: `pa_link_igfeed_${timestamp}`, title: `pa_title_igfeed_${timestamp}` },
+      r5: { img: `pa_img_reels_ig_${timestamp}`, body: `pa_body_igreels_${timestamp}`, link: `pa_link_igreels_${timestamp}`, title: `pa_title_igreels_${timestamp}` },
+      r6: { img: `pa_img_reels_fb_${timestamp}`, body: `pa_body_fbreels_${timestamp}`, link: `pa_link_fbreels_${timestamp}`, title: `pa_title_fbreels_${timestamp}` },
+      r7: { img: `pa_img_1x1_default_${timestamp}`, body: `pa_body_default_${timestamp}`, link: `pa_link_default_${timestamp}`, title: `pa_title_default_${timestamp}` },
+    };
+
+    // images 배열: 같은 해시에 해당하는 모든 고유 image_label을 adlabels에 포함
+    if (hashMap["9x16"]) {
+      images.push({ hash: hashMap["9x16"], adlabels: [{ name: ruleLabels.r1.img }] });
+    }
+    if (hashMap["1x1"]) {
+      images.push({ hash: hashMap["1x1"], adlabels: [{ name: ruleLabels.r2.img }, { name: ruleLabels.r7.img }] });
+    }
+    if (hashMap["4x5"]) {
+      images.push({ hash: hashMap["4x5"], adlabels: [{ name: ruleLabels.r3.img }, { name: ruleLabels.r4.img }] });
+    }
+    if (hashMap["9x16reels"]) {
+      images.push({ hash: hashMap["9x16reels"], adlabels: [{ name: ruleLabels.r5.img }, { name: ruleLabels.r6.img }] });
+    }
+
+    // Rule 1: 9:16 → story (facebook, instagram, messenger, audience_network)
+    if (hashMap["9x16"]) {
+      allBodyLabels.push({ name: ruleLabels.r1.body });
+      allLinkLabels.push({ name: ruleLabels.r1.link });
+      allTitleLabels.push({ name: ruleLabels.r1.title });
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65, age_min: 13,
           publisher_platforms: ["facebook", "instagram", "audience_network", "messenger"],
           facebook_positions: ["story"],
           instagram_positions: ["ig_search", "profile_reels", "story"],
           messenger_positions: ["story"],
           audience_network_positions: ["classic"],
         },
-        [assetLabelKey]: { name: labelMap["9x16"] },
+        image_label: { name: ruleLabels.r1.img },
+        body_label: { name: ruleLabels.r1.body },
+        link_url_label: { name: ruleLabels.r1.link },
+        title_label: { name: ruleLabels.r1.title },
         priority: priority++,
       });
     }
 
-    // Rule 2: 4:5 → facebook feed만
-    if (labelMap["4x5"]) {
+    // Rule 2: 1:1 → right_hand_column, search (facebook)
+    if (hashMap["1x1"]) {
+      allBodyLabels.push({ name: ruleLabels.r2.body });
+      allLinkLabels.push({ name: ruleLabels.r2.link });
+      allTitleLabels.push({ name: ruleLabels.r2.title });
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65, age_min: 13,
+          publisher_platforms: ["facebook"],
+          facebook_positions: ["right_hand_column", "search"],
+        },
+        image_label: { name: ruleLabels.r2.img },
+        body_label: { name: ruleLabels.r2.body },
+        link_url_label: { name: ruleLabels.r2.link },
+        title_label: { name: ruleLabels.r2.title },
+        priority: priority++,
+      });
+    }
+
+    // Rule 3: 4:5 → facebook feed
+    if (hashMap["4x5"]) {
+      allBodyLabels.push({ name: ruleLabels.r3.body });
+      allLinkLabels.push({ name: ruleLabels.r3.link });
+      allTitleLabels.push({ name: ruleLabels.r3.title });
+      assetCustomizationRules.push({
+        customization_spec: {
+          age_max: 65, age_min: 13,
           publisher_platforms: ["facebook"],
           facebook_positions: ["feed"],
         },
-        [assetLabelKey]: { name: labelMap["4x5"] },
+        image_label: { name: ruleLabels.r3.img },
+        body_label: { name: ruleLabels.r3.body },
+        link_url_label: { name: ruleLabels.r3.link },
+        title_label: { name: ruleLabels.r3.title },
         priority: priority++,
       });
     }
 
-    // Rule 3: 4:5 → instagram stream (피드)만
-    if (labelMap["4x5"]) {
+    // Rule 4: 4:5 → instagram stream (피드)
+    if (hashMap["4x5"]) {
+      allBodyLabels.push({ name: ruleLabels.r4.body });
+      allLinkLabels.push({ name: ruleLabels.r4.link });
+      allTitleLabels.push({ name: ruleLabels.r4.title });
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65, age_min: 13,
           publisher_platforms: ["instagram"],
           instagram_positions: ["stream"],
         },
-        [assetLabelKey]: { name: labelMap["4x5"] },
+        image_label: { name: ruleLabels.r4.img },
+        body_label: { name: ruleLabels.r4.body },
+        link_url_label: { name: ruleLabels.r4.link },
+        title_label: { name: ruleLabels.r4.title },
         priority: priority++,
       });
     }
 
-    // Rule 4: 9:16 Reels → instagram reels
-    if (labelMap["9x16reels"]) {
+    // Rule 5: 9:16 Reels → instagram reels
+    if (hashMap["9x16reels"]) {
+      allBodyLabels.push({ name: ruleLabels.r5.body });
+      allLinkLabels.push({ name: ruleLabels.r5.link });
+      allTitleLabels.push({ name: ruleLabels.r5.title });
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65, age_min: 13,
           publisher_platforms: ["instagram"],
           instagram_positions: ["reels"],
         },
-        [assetLabelKey]: { name: labelMap["9x16reels"] },
+        image_label: { name: ruleLabels.r5.img },
+        body_label: { name: ruleLabels.r5.body },
+        link_url_label: { name: ruleLabels.r5.link },
+        title_label: { name: ruleLabels.r5.title },
         priority: priority++,
       });
     }
 
-    // Rule 5: 9:16 Reels → facebook_reels
-    if (labelMap["9x16reels"]) {
+    // Rule 6: 9:16 Reels → facebook_reels
+    if (hashMap["9x16reels"]) {
+      allBodyLabels.push({ name: ruleLabels.r6.body });
+      allLinkLabels.push({ name: ruleLabels.r6.link });
+      allTitleLabels.push({ name: ruleLabels.r6.title });
       assetCustomizationRules.push({
         customization_spec: {
+          age_max: 65, age_min: 13,
           publisher_platforms: ["facebook"],
           facebook_positions: ["facebook_reels"],
         },
-        [assetLabelKey]: { name: labelMap["9x16reels"] },
+        image_label: { name: ruleLabels.r6.img },
+        body_label: { name: ruleLabels.r6.body },
+        link_url_label: { name: ruleLabels.r6.link },
+        title_label: { name: ruleLabels.r6.title },
         priority: priority++,
       });
     }
 
-    // Rule 6: 1:1 → 기본값 (placement 지정 없음! right_hand_column, search는 자동 처리)
-    if (labelMap["1x1"]) {
+    // Rule 7: 1:1 → 기본값 (나머지 모든 지면)
+    if (hashMap["1x1"]) {
+      allBodyLabels.push({ name: ruleLabels.r7.body });
+      allLinkLabels.push({ name: ruleLabels.r7.link });
+      allTitleLabels.push({ name: ruleLabels.r7.title });
       assetCustomizationRules.push({
-        customization_spec: {},
-        [assetLabelKey]: { name: labelMap["1x1"] },
+        customization_spec: {
+          age_max: 65, age_min: 13,
+        },
+        image_label: { name: ruleLabels.r7.img },
+        body_label: { name: ruleLabels.r7.body },
+        link_url_label: { name: ruleLabels.r7.link },
+        title_label: { name: ruleLabels.r7.title },
         priority: priority++,
       });
     }
@@ -367,13 +447,14 @@ async function createNewCreative(
     asset_feed_spec: {
       ...(images.length > 0 && { images }),
       ...(videos.length > 0 && { videos }),
-      bodies: [{ text: body }],
-      titles: [{ text: title }],
+      bodies: [{ text: body, ...(allBodyLabels.length > 0 && { adlabels: allBodyLabels }) }],
+      titles: [{ text: title, ...(allTitleLabels.length > 0 && { adlabels: allTitleLabels }) }],
       descriptions: [{ text: description }],
       link_urls: [
         {
           website_url: websiteUrl,
           display_url: displayUrl,
+          ...(allLinkLabels.length > 0 && { adlabels: allLinkLabels }),
         },
       ],
       call_to_action_types: ["LEARN_MORE"],
