@@ -406,6 +406,7 @@ export default function UploadPage() {
   const [displayUrl, setDisplayUrl] = useState("https://www.codingvalley.com");
   const [description, setDescription] = useState("AI 시대 성공 전략, AI 코딩밸리");
   const [defaultTitle, setDefaultTitle] = useState("🔥 지금 무료체험 + 74% 할인!");
+  const [urlTags, setUrlTags] = useState("utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{adset.name}}__{{ad.name}}");
 
   // Campaign & Adset selection
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -591,6 +592,7 @@ export default function UploadPage() {
           landingUrl,
           displayUrl,
           description,
+          urlTags,
         }),
       });
 
@@ -839,6 +841,20 @@ export default function UploadPage() {
                 placeholder="🔥 지금 무료체험 + 74% 할인!"
               />
               <p className="text-xs text-muted mt-1">새 소재 추가 시 기본으로 적용됩니다</p>
+            </div>
+
+            <div>
+              <label className="block text-muted mb-1">URL 매개변수 (utm_tags)</label>
+              <input
+                type="text"
+                className="toss-input text-sm font-mono"
+                value={urlTags}
+                onChange={(e) => setUrlTags(e.target.value)}
+                placeholder="utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{adset.name}}__{{ad.name}}"
+              />
+              <p className="text-xs text-muted mt-1">
+                동적 매개변수: &#123;&#123;campaign.name&#125;&#125;, &#123;&#123;adset.name&#125;&#125;, &#123;&#123;ad.name&#125;&#125;
+              </p>
             </div>
 
             {/* 고정 설정 (읽기 전용) */}

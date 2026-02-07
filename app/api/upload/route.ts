@@ -46,6 +46,7 @@ interface UploadRequest {
   landingUrl?: string;
   displayUrl?: string;
   description?: string;
+  urlTags?: string;  // URL 매개변수 (utm_source, utm_medium 등)
 }
 
 
@@ -150,6 +151,7 @@ async function createAdCreative(
   landingUrl: string,
   displayUrl: string,
   description: string,
+  urlTags: string,
   omnichannel?: OmnichannelInfo
 ): Promise<string> {
   const url = `${GRAPH_API_BASE}/${adAccountId}/adcreatives`;
@@ -179,6 +181,7 @@ async function createAdCreative(
     creativeData = {
       access_token: accessToken,
       name: creative.name,
+      url_tags: urlTags,
       object_story_spec: objectStorySpec,
     };
   } else {
@@ -381,6 +384,7 @@ async function createAdCreative(
     creativeData = {
       access_token: accessToken,
       name: creative.name,
+      url_tags: urlTags,
       object_story_spec: {
         page_id: config.page_id,
         ...(config.instagram_actor_id && { instagram_user_id: config.instagram_actor_id }),
@@ -593,6 +597,7 @@ export async function POST(request: NextRequest) {
     const landingUrl = body.landingUrl || DEFAULT_LANDING_URL;
     const displayUrl = body.displayUrl || DEFAULT_DISPLAY_URL;
     const description = body.description || DEFAULT_DESCRIPTION;
+    const urlTags = body.urlTags || "utm_source=meta&utm_medium=cpc&utm_campaign={{campaign.name}}&utm_content={{adset.name}}__{{ad.name}}";
 
     // Get client config
     const config = await getClient(clientName);
@@ -705,6 +710,7 @@ export async function POST(request: NextRequest) {
           landingUrl,
           displayUrl,
           description,
+          urlTags,
           omnichannel
         );
         lastCreativeId = creativeId;
